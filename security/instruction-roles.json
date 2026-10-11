@@ -404,8 +404,8 @@
       },
       "purchase_season_pass": {
         "role": "gameplay",
-        "status": "active",
-        "note": "Покупка пропуска внутри сезона, один раз. Продажа в интерфейсе остаётся за PAID_PASS_READY, это не заглушка require!(false)."
+        "status": "disabled-on-chain",
+        "note": "Продажа закрыта до отдельной Devnet acceptance: прямой вызов возвращает SeasonPremiumRequired до перевода SOL."
       },
       "referral_bind": {
         "role": "gameplay",
@@ -899,8 +899,8 @@
       },
       "session_execute": {
         "role": "gameplay",
-        "status": "active",
-        "note": "Живой внешний вызов сессии. Программа цели не должна приходить от вызывающего как произвольный CPI; это открытая проверка #114, не заглушка."
+        "status": "disabled-on-chain",
+        "note": "Fail-closed: произвольный CPI не входит в проверенный allowlist; вызов возвращает AtomicBindingRequired до мутации счётчика или CPI."
       }
     }
   }

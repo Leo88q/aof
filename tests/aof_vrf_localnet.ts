@@ -1,19 +1,17 @@
 /**
- * [F-06] The full VRF cycle on the real runtime: pool slot -> pack commit ->
- * permissionless reveal -> NFT settlement, through aof-core's actual CPIs.
+ * [F-06] Local-validator coverage for the program-owned SlotHashes VRF.
  *
- * The Switchboard test double was deleted. This suite still names the old
- * account list, so it skips until it is rewritten for the slot-hash contexts.
- * Source settlement rules are pinned by tests/readiness/vrf.test.cjs. What a
- * rewritten run must prove on the real runtime:
- *   - the signer seeds and account list of the init CPI;
+ * The legacy pool/reveal cases below still carry Switchboard account lists and
+ * remain skipped rather than loading the deleted oracle test double. CI runs
+ * the independent pack-timeout forfeit case in a dedicated, accelerated
+ * validator invocation. A complete rewrite must still prove:
+ *   - operator-only initialization of indexed VrfSlot PDAs;
  *   - commit stores seed_slot = commit_slot + SLOT_HASH_DELAY and locks the slot;
  *   - reveal reads the real SlotHashes sysvar and ignores the caller's bytes;
- *   - the slot lock and its release, the escrow release and the settler reimbursement;
+ *   - player refund vs treasury-forfeit behavior, slot release and settler reimbursement;
  *   - the compute units of the VRF instructions (tests/aof_cu_report.ts).
  *
- * Until the account list matches aof-core, the suite skips instead of loading
- * a deleted oracle double.
+ * Do not enable the legacy cases until their account lists match aof-core.
  */
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
@@ -29,10 +27,11 @@ const SB_QUEUE = new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
 const SB_STATE = new PublicKey("7Gs9n5FQMeC9XcEhg281bRZ6VHRrCvqp5Yq1j78HkvNa");
 const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 const ALT_PROGRAM = new PublicKey("AddressLookupTab1e1111111111111111111111111");
-// aof_core::constants::VRF_REFUND_AFTER_SLOTS; pinned in tests/readiness/vrf.test.cjs.
-const REFUND_AFTER_SLOTS = 432;
-// aof_core::vrf::SLOT_HASH_DELAY. The outcome slot is this far ahead of commit.
-const SLOT_HASH_DELAY = 32;
+// aof_core::vrf::SEED_OFFSETS and SLOT_HASH_RETENTION; pinned in tests/readiness/vrf.test.cjs.
+const SLOT_HASH_SEED_OFFSETS = [32, 64, 96, 128] as const;
+const SLOT_HASH_DELAY = SLOT_HASH_SEED_OFFSETS[0];
+const SLOT_HASH_LAST_OFFSET = SLOT_HASH_SEED_OFFSETS[SLOT_HASH_SEED_OFFSETS.length - 1];
+const SLOT_HASH_RETENTION = 512;
 // aof_core::constants::TOOL_METADATA_CREATION_FEE_LAMPORTS: Metaplex Token
 // Metadata charges the payer 0.01 SOL for CreateMetadataAccountV3 and parks it
 // in the new Metadata account on top of its rent.
@@ -63,7 +62,7 @@ export function rollTool(value: Buffer, tag: string, commit: PublicKey, odds: nu
   return { bps, rarity, toolType: PACK_TOOL_TYPES[Number(below(lane(1), BigInt(PACK_TOOL_TYPES.length)))] };
 }
 
-describe("aof-core: VRF cycle on the local validator (Switchboard test double)", () => {
+describe("aof-core: VRF cycle on the local validator (legacy Switchboard cases)", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const connection = provider.connection;
@@ -139,8 +138,9 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   }
 
   // Lamport change of each account inside one transaction (its pre/post
-  // balances), plus the fee its payer was charged. Exact even for the provider
-  // wallet, which is the treasury here and pays every fee of the suite.
+  // balances), plus the fee its payer was charged. RPC exposes balances as JS
+  // numbers, so exact deltas require both balances to stay below 2^53; the
+  // expiry test uses a dedicated, minimally funded treasury for that reason.
   async function txDeltas(signature: string) {
     await connection.confirmTransaction(signature, "confirmed");
     const tx = await connection.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
@@ -190,10 +190,9 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     };
   }
 
-  const commitAccounts = (user: PublicKey, packCommit: PublicKey, oracle: PublicKey) => ({
-    config: configPda, authority, user, packConfig, packCommit, vrfSlot, randomness, vrfAuthority,
-    queue: SB_QUEUE, oracle, recentSlothashes: SLOT_HASHES, switchboardProgram: SB_PROGRAM,
-    systemProgram: SystemProgram.programId,
+  const commitAccounts = (user: PublicKey, packCommit: PublicKey) => ({
+    config: configPda, authority, user, packConfig, packCommit, vrfSlot,
+    recentSlothashes: SLOT_HASHES, systemProgram: SystemProgram.programId,
   });
 
   const revealAccounts = (cranker: PublicKey, user: PublicKey, packCommit: PublicKey, oracle: PublicKey) => {
@@ -272,24 +271,32 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     return { mint, tokenAccount };
   }
 
-  async function commitPack(oracle: PublicKey) {
+  async function commitPack() {
     const user = Keypair.generate();
     await airdrop(user);
     const nonce = new BN(Date.now());
     const packCommit = pda([B("pack_commit"), user.publicKey.toBuffer(), u64le(nonce)]);
     await sendWithPayer(program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts(commitAccounts(user.publicKey, packCommit, oracle)), user);
+      .accountsStrict(commitAccounts(user.publicKey, packCommit)), user);
     return { user, packCommit };
   }
 
   before(async function () {
-    console.log("      skipped: slot-hash localnet suite is not rewritten; the Switchboard double stays deleted");
-    this.skip();
+    // Keep the legacy Switchboard-dependent cases disabled in the normal suite.
+    // CI separately runs only the slot-hash timeout refund against a fresh
+    // validator; that case uses the program-owned VrfSlot and needs this setup.
+    if (process.env.AOF_VRF_EXPIRY_ONLY !== "1" || process.env.AOF_TEST_VRF_EXPIRY !== "1") {
+      console.log("      skipped: legacy Switchboard-dependent VRF cases are not rewritten");
+      this.skip();
+    }
     // The CI expiry-only invocation starts a fresh validator and runs only the
     // timeout case, so it cannot depend on aof_core.ts having seeded Config and
-    // pack_config first. The normal full-suite path already has these PDAs.
+    // pack_config first. Give its treasury a small balance so exact transaction
+    // deltas stay below JavaScript's 2^53 lamport precision boundary.
+    const expiryTreasury = Keypair.generate();
+    await airdrop(expiryTreasury, 1);
     if (!(await connection.getAccountInfo(configPda, "confirmed"))) {
-      await sendWithPayer(program.methods.initialize(authority).accounts({
+      await sendWithPayer(program.methods.initialize(expiryTreasury.publicKey).accounts({
         config: configPda, authority, auth: authPda, vault: vaultPda,
         programData: programDataPda, systemProgram: SystemProgram.programId,
       }), providerSigner);
@@ -301,12 +308,12 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     }
 
     for (let i = 0; i < 64 && index < 0; i += 1) {
-      const r = pda([B("vrf_randomness"), u32le(i)]);
-      if (!(await connection.getAccountInfo(pda([B("vrf_slot"), r.toBuffer()])))) index = i;
+      const candidate = pda([B("vrf_slot"), u32le(i)]);
+      if (!(await connection.getAccountInfo(candidate))) index = i;
     }
     expect(index).to.be.greaterThan(-1);
-    randomness = pda([B("vrf_randomness"), u32le(index)]);
-    vrfSlot = pda([B("vrf_slot"), randomness.toBuffer()]);
+    vrfSlot = pda([B("vrf_slot"), u32le(index)]);
+    randomness = vrfSlot;
     treasury = (await program.account.config.fetch(configPda)).treasury;
     // tests/aof_core.ts creates pack config 0 in its empty-pool test.
     const pc = await program.account.packConfig.fetch(packConfig);
@@ -317,15 +324,10 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     // skips the vrf_pool_add test, so provision the one slot it needs here.
     if (process.env.AOF_VRF_EXPIRY_ONLY === "1" && !(await connection.getAccountInfo(vrfSlot, "confirmed"))) {
       const recentSlot = await connection.getSlot("finalized");
-      const lutSigner = pda([B("LutSigner"), randomness.toBuffer()], SB_PROGRAM);
-      await sendWithPayer(program.methods.vrfPoolAdd(index, new BN(recentSlot)).accounts({
-        config: configPda, operator: authority, vrfAuthority, randomness, vrfSlot,
-        rewardEscrow: getAssociatedTokenAddressSync(NATIVE_MINT, randomness, true),
-        queue: SB_QUEUE, programState: SB_STATE, lutSigner,
-        lut: pda([lutSigner.toBuffer(), new BN(recentSlot).toArrayLike(Buffer, "le", 8)], ALT_PROGRAM),
-        wrappedSolMint: NATIVE_MINT, switchboardProgram: SB_PROGRAM,
-        addressLookupTableProgram: ALT_PROGRAM, tokenProgram: TOKEN_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+      await sendWithPayer(program.methods.vrfPoolAdd(index, new BN(recentSlot)).accountsStrict({
+        config: configPda, operator: authority, vrfSlot,
+        tokenProgram: TOKEN_PROGRAM_ID, associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       }), providerSigner);
     }
   });
@@ -369,14 +371,14 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     const stranger = Keypair.generate();
     await airdrop(stranger, 1);
     await expectError(program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts({ ...commitAccounts(user.publicKey, packCommit, oracle), authority: stranger.publicKey })
+      .accounts({ ...commitAccounts(user.publicKey, packCommit), authority: stranger.publicKey })
       .signers([user, stranger]).rpc(), "Unauthorized");
     // A price above the player's limit is refused.
     await expectError(program.methods.packOpenCommit({ small: {} }, nonce, price.subn(1))
-      .accounts(commitAccounts(user.publicKey, packCommit, oracle)).signers([user]).rpc(), "PriceAboveMaximum");
+      .accounts(commitAccounts(user.publicKey, packCommit)).signers([user]).rpc(), "PriceAboveMaximum");
 
     const commitSignature = await sendWithPayer(program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts(commitAccounts(user.publicKey, packCommit, oracle)), user);
+      .accounts(commitAccounts(user.publicKey, packCommit)), user);
     const commitDelta = await txDeltas(commitSignature);
     const commit = await program.account.packCommit.fetch(packCommit);
     const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
@@ -406,7 +408,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
     await airdrop(other);
     const otherCommit = pda([B("pack_commit"), other.publicKey.toBuffer(), u64le(nonce)]);
     await expectError(program.methods.packOpenCommit({ small: {} }, nonce, price)
-      .accounts(commitAccounts(other.publicKey, otherCommit, oracle)).signers([other]).rpc(), "VrfSlotBusy");
+      .accounts(commitAccounts(other.publicKey, otherCommit)).signers([other]).rpc(), "VrfSlotBusy");
 
     pending = { user, packCommit, oracle };
   });
@@ -470,7 +472,7 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
 
   it("the freed slot serves the next commit: a recommit resets the reveal and settles with its own value", async () => {
     const oracle = Keypair.generate().publicKey;
-    const { user, packCommit } = await commitPack(oracle);
+    const { user, packCommit } = await commitPack();
     const committed = await program.account.packCommit.fetch(packCommit);
     const value = await valueFor(BigInt(committed.seedSlot.toString()), packCommit);
 
@@ -562,10 +564,18 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
   // Run this integration case in its own CI invocation so ordinary tests keep
   // the validator's default blockhash lifetime and throughput.
   if (process.env.AOF_TEST_VRF_EXPIRY === "1") {
-    it("pack timeout refund: the validator reaches expiry and returns price, capped deposit, and rent bond to the player", async function () {
+    it("pack timeout: aged-out SlotHashes forfeit price and deposit to treasury; player gets only commit rent", async function () {
       this.timeout(40 * 60_000);
-      const oracle = Keypair.generate().publicKey;
-      const { user, packCommit } = await commitPack(oracle);
+      const { user, packCommit } = await commitPack();
+      const expireBuilder = () => program.methods.packOpenExpire().accountsStrict({
+        config: configPda, packCommit, user: user.publicKey, treasury, vrfSlot,
+        recentSlothashes: SLOT_HASHES,
+      });
+      await expectError(expireBuilder().rpc(), "CommitNotExpired");
+      const treasuryBeforeForfeit = await connection.getBalance(treasury, "confirmed");
+      expect(treasuryBeforeForfeit).to.be.lessThan(Number.MAX_SAFE_INTEGER,
+        "the dedicated test treasury keeps lamport deltas exactly representable");
+
       const commit = await program.account.packCommit.fetch(packCommit);
       const commitInfo = await connection.getAccountInfo(packCommit, "confirmed");
       expect(commitInfo).to.not.equal(null);
@@ -579,46 +589,53 @@ describe("aof-core: VRF cycle on the local validator (Switchboard test double)",
       const cranker = Keypair.generate();
       await airdrop(cranker, 2);
       const crankerBeforeExpiry = await connection.getBalance(cranker.publicKey, "confirmed");
-      const authorityBefore = await connection.getBalance(authority, "confirmed");
-      const expireBuilder = () => program.methods.packOpenExpire().accounts({
-        config: configPda, packCommit, user: user.publicKey, vrfSlot,
-      });
-
-      await expectError(expireBuilder().rpc(), "CommitNotExpired");
       expect((await program.account.packCommit.fetch(packCommit)).user.toBase58()).to.equal(user.publicKey.toBase58(),
-        "refund is unavailable before the reveal window closes");
+        "the commit remains open before its future seed slots are knowable");
 
-      const targetSlot = commit.commitSlot.toNumber() + REFUND_AFTER_SLOTS;
+      // Every seed hash must age out before expiry can close the commit: a
+      // readable hash keeps reveal open, and an aged-out hash forfeits escrow.
+      const commitSlot = BigInt(commit.commitSlot.toString());
+      const seedSlots = SLOT_HASH_SEED_OFFSETS.map((offset) => commitSlot + BigInt(offset));
+      const targetSlot = Number(commitSlot + BigInt(SLOT_HASH_LAST_OFFSET + SLOT_HASH_RETENTION + 1));
+      const allSeedHashesAgedOut = async () => {
+        const sysvar = await connection.getAccountInfo(SLOT_HASHES, "confirmed");
+        if (!sysvar) return false;
+        const data = Buffer.from(sysvar.data);
+        return seedSlots.every((seedSlot) => parseSlotHash(data, seedSlot) === null);
+      };
       // Agave 4.x does not expose the historical test-only warpSlot JSON-RPC
       // method. CI's expiry-only invocation uses eight ticks per slot so the
-      // real validator advances the on-chain timeout without shortening the
-      // blockhash window for the rest of the suite.
+      // real validator advances beyond SlotHashes retention without shortening
+      // the blockhash window for the rest of the suite.
       const slotDeadline = Date.now() + 35 * 60_000;
       let observedSlot = await connection.getSlot("processed");
-      while (observedSlot < targetSlot) {
+      let hashesAgedOut = await allSeedHashesAgedOut();
+      while (observedSlot < targetSlot || !hashesAgedOut) {
         if (Date.now() >= slotDeadline) {
-          throw new Error(`local-validator did not advance to refund slot ${targetSlot}; last observed ${observedSlot}`);
+          throw new Error(`local-validator did not age out all seed hashes by slot ${targetSlot}; last observed ${observedSlot}`);
         }
         await sleep(1_000);
         observedSlot = await connection.getSlot("processed");
+        hashesAgedOut = await allSeedHashesAgedOut();
       }
       expect(observedSlot).to.be.at.least(targetSlot,
-        "validator clock reached commit_slot + VRF_REFUND_AFTER_SLOTS");
+        "every seed hash is past the SlotHashes retention boundary");
+      expect(hashesAgedOut).to.equal(true, "none of the four seed hashes remains readable");
 
+      const forfeitedLamports = commit.paidLamports.toNumber() + commit.depositLamports.toNumber();
       const signature = await sendWithPayer(expireBuilder(), cranker);
       const d = await txDeltas(signature);
       expect(d.pre(packCommit)).to.equal(escrowLamports);
       expect(d(packCommit)).to.equal(-escrowLamports, "expiry closes the commit and empties its escrow");
-      expect(d(user.publicKey)).to.equal(escrowLamports,
-        "player receives price + unused deposit + refundable commit rent bond");
+      expect(d(treasury)).to.equal(forfeitedLamports, "aged-out outcome sends price and deposit to the treasury");
+      expect(d(user.publicKey)).to.equal(commitRent, "only the closed commit account's rent returns to the player");
       expect(d(cranker.publicKey)).to.equal(-d.fee, "permissionless expirer pays only its network fee");
-      expect(await connection.getBalance(user.publicKey, "confirmed")).to.equal(userBeforeExpiry + escrowLamports);
+      expect(await connection.getBalance(user.publicKey, "confirmed")).to.equal(userBeforeExpiry + commitRent);
       expect(await connection.getBalance(cranker.publicKey, "confirmed")).to.equal(crankerBeforeExpiry - d.fee);
-      expect(await connection.getBalance(authority, "confirmed")).to.equal(authorityBefore,
-        "authority neither funds expiry nor receives the player's refund");
+      expect(await connection.getBalance(treasury, "confirmed")).to.equal(treasuryBeforeForfeit + forfeitedLamports);
       expect(await connection.getAccountInfo(packCommit)).to.equal(null);
       expect((await program.account.vrfSlot.fetch(vrfSlot)).lock.toBase58()).to.equal(zero,
-        "timeout refund releases the pooled randomness slot");
+        "timeout forfeit releases the pooled randomness slot");
     });
   }
 });

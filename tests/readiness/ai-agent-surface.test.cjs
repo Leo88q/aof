@@ -44,16 +44,35 @@ test('#78 the only agent provider config points at a local model; no remote MCP 
   }
 });
 
-test('#82 no durable-nonce transactions anywhere in the client or backend (nonce = offline-signable drain)', () => {
+test('#82 durable nonce is confined to the player builder and strictly guarded', () => {
   const files = [
     ...walk(path.join(ROOT, 'frontend/src'), ['.ts', '.tsx']),
     ...walk(path.join(ROOT, 'aof_backend/src'), ['.ts']),
     ...walk(path.join(ROOT, 'aof_backend/services'), ['.ts']),
     ...walk(path.join(ROOT, 'watchtower/src'), ['.ts']),
   ];
-  const banned = /\b(nonceInfo|NonceAccount|nonceAdvance|advanceNonceAccount|createNonceAccount|nonceInitialize|NONCE_ACCOUNT_LENGTH)\b/;
-  const hits = files.filter((f) => banned.test(fs.readFileSync(f, 'utf8'))).map((f) => path.relative(ROOT, f));
-  assert.deepEqual(hits, [], `durable nonce APIs found in: ${hits.join(', ')}`);
+  const api = /\b(nonceInfo|NonceAccount|nonceAdvance|advanceNonceAccount|createNonceAccount|nonceInitialize|NONCE_ACCOUNT_LENGTH)\b/;
+  const hits = files.filter((f) => api.test(fs.readFileSync(f, 'utf8'))).map((f) => path.relative(ROOT, f)).sort();
+  assert.deepEqual(hits, ['aof_backend/src/lib/playerNonce.ts', 'frontend/src/lib/txGuard.ts'],
+    `durable nonce APIs may only exist in the reviewed player builder and transaction guard: ${hits.join(', ')}`);
+
+  const builder = read('aof_backend/src/lib/playerNonce.ts');
+  assert.match(builder, /SystemProgram\.createNonceAccount\([\s\S]{0,220}authorizedPubkey: player/,
+    'the player, not the operator, is the nonce authority');
+  assert.match(builder, /SystemProgram\.nonceAdvance\([\s\S]{0,160}authorizedPubkey: player/);
+  assert.match(builder, /advance,\s*\.\.\.\(budget\.length \? budget : defaultBudget\(\)\)/,
+    'the nonce advance must remain the first instruction');
+  assert.match(builder, /reimbursement = record\.initialNonce !== "" && currentNonce === record\.initialNonce/,
+    'the one-time rent refund is emitted only before the nonce has advanced');
+
+  const guard = read('frontend/src/lib/txGuard.ts');
+  assert.match(guard, /opcode === 4 && instructions\[0\] === ix && isPlayerNonceAdvance\(ix, user\)/,
+    'a nonce advance is allowed only as the first instruction and for the connected wallet');
+  assert.match(guard, /ix\.keys\[2\]\?\.equals\(user\) === true/);
+  assert.match(guard, /ix\.keys\[1\]\?\.toBase58\(\) === RECENT_BLOCKHASHES_SYSVAR/);
+  assert.match(guard, /amount > MAX_NONCE_RENT_LAMPORTS/);
+  assert.match(guard, /amount !== rent/,
+    'operator reimbursement must equal the live rent for exactly one nonce account');
 });
 
 test('#82 the client transaction guard rejects every System Program instruction except transfer/create-mint (so AdvanceNonce cannot be smuggled)', () => {
@@ -85,6 +104,10 @@ test('#73 farm-trader stays simulation-only and session-key spending stays disab
   assert.doesNotMatch(executor, /sendTransaction|sendRawTransaction|signTransaction\(/);
   const sessionKeys = read('programs/aof-session-keys/src/lib.rs');
   assert.match(sessionKeys, /Session spending is disabled until atomically bound to a target instruction/);
+  assert.match(sessionKeys, /pub fn session_execute[\s\S]*?\{\s*err!\(SkError::AtomicBindingRequired\)/,
+    'the legacy arbitrary-CPI instruction must fail as its first statement');
+  assert.doesNotMatch(sessionKeys, /invoke(?:_signed)?\s*\(/,
+    'no direct or session-signed arbitrary CPI may remain reachable');
 });
 
 test('#75 hot authority key is bounded by infrastructure, not by a prompt: gate + vault guard + issuance cap + circuit breaker exist and are wired', () => {

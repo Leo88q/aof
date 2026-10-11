@@ -57,13 +57,36 @@ function legacyInstructionForms(name) {
 }
 
 /** Anchor/PDA-механика `seeds` — не ресурс Neuron. */
-const NEURON_MACHINERY = /(?<![A-Za-z0-9_.])seeds\s*=\s*\\?\[|(?:let|const|var)\s+seeds\b|\b(?:config|signer)_seeds\b|&\s*\[seeds\]|\[seeds\b|\(seeds\b|seeds\s*\)|seeds\.[a-z]|\.\.\.seeds|findProgramAddressSync|createProgramAddressSync|find\(seeds|(?<![A-Za-z0-9_.])seeds\s*:\s*(?:\(|&|Buffer|Uint8Array)|["']seeds["']\s*:\s*seeds\b|lookup\([^,]+,\s*["']seeds["']\)|seeds\s*===\s*null|\bseeds\s*\+|seeds\\s\*[:=]/;
+const NEURON_MACHINERY = /(?<![A-Za-z0-9_.])seeds\s*=\s*\\?\[|(?:let|const|var)\s+seeds\b|\b(?:config|signer)_seeds\b|&\s*\[seeds\]|\[seeds\b|\(seeds\b|seeds\s*\)|seeds\.[a-z]|\.\.\.seeds|\bfor\s+\w+\s+in\s+seeds\b|\bseeds\s*\[|[&*]\s*seeds\b|findProgramAddressSync|createProgramAddressSync|find\(seeds|(?<![A-Za-z0-9_.])seeds\s*:\s*(?:\(|&|Buffer|Uint8Array)|["']seeds["']\s*:\s*seeds\b|lookup\([^,]+,\s*["']seeds["']\)|seeds\s*===\s*null|\bseeds\s*\+|seeds\\s\*[:=]/;
 
 /**
  * Файлы, которые *описывают* legacy-имена (mapping, alias-списки, негативные фикстуры гейта),
  * а не используют их как ресурсные идентификаторы. Список виден в плане вместе с причиной;
  * runtime-кода продукта в нём быть не может (это проверяет гейт `--check`).
  */
+
+/**
+ * The retained Potato lottery chamber is a distinct, permanently sealed pool
+ * identifier, not the canonical Mind resource. Preserve its existing display
+ * and fail-closed API row, while still detecting resource forms such as
+ * `potato_mint` in every active code path.
+ */
+function isSealedLotteryPoolReference(rel, line) {
+  if (rel === 'aof_backend/src/routes/lottery.ts') {
+    return /id:\s*["']potato["']\s*,\s*asset:\s*["']POTATO["']\s*,\s*status:\s*["']sealed["']\s*,\s*reason:\s*["']POTATO_ESCROW_NOT_DEPLOYED["']/.test(line);
+  }
+  if (rel === 'frontend/src/i18n/lotteryCopy.ts') {
+    return /\bchambers\s*:.*\bpotato\s*:\s*(?:string|["']Potato["'])/.test(line);
+  }
+  if (rel === 'frontend/src/pages/market/LotteryHall.tsx') {
+    return /^\s*(?:export type LotteryPoolId\s*=|const POOLS:\s*LotteryPoolId\[\]|const names\s*=)/.test(line);
+  }
+  if (rel === 'frontend/src/lib/visualAssets.ts') {
+    return /\bpotato:\s*["']\/assets\/lottery\/potato\.jpg["']/.test(line);
+  }
+  return false;
+}
+
 const SCAN_EXEMPT_FILES = new Map([
   ['scripts/resource-drift.mjs', 'drift detector contains its own legacy tokens, explicit mapping parser, and detector-level Anchor syntax rules; not product source'],
   ['scripts/resource-manifest.mjs', 'список farming-алиасов, запрещённых в player-facing `display`'],
@@ -72,6 +95,7 @@ const SCAN_EXEMPT_FILES = new Map([
   ['scripts/layout-baseline.mjs', 'явная таблица old→canonical для доказательства rename без смены layout; не runtime'],
   ['scripts/idl-from-source.py', 'Anchor PDA `seeds` в генераторе IDL — не ресурс Neuron'],
   ['tests/readiness/resource-rename-plan.test.cjs', 'негативные фикстуры: остаток обязан ронять гейт'],
+  ['tests/readiness/resource-drift.test.cjs', 'negative fixture asserts that potato_mint remains a resource-drift hit'],
   ['tests/readiness/resource-manifest.test.cjs', 'негативные фикстуры алиасов в `display`'],
   ['tests/readiness/layout-baseline.test.cjs', 'checks the historical `MaterialMints.seeds → neuron` rename against the pre-rename layout; mapping test, not product code'],
 ]);
@@ -175,6 +199,7 @@ export function scanLayer(files, resources) {
           const after = text.slice(start + m[0].length, start + m[0].length + 12);
           const token = (m[1] ?? m[0]).trim();
           if (NEURON_MACHINERY.test(raw)) continue;
+          if (resource.kind === 'Mind' && isSealedLotteryPoolReference(rel, raw)) continue;
           if (/^["']?\s*:\s*\[/.test(after)) continue;                  // "seeds": [ — PDA Anchor
           if (/className|tailwind|bg-|text-|from-|to-/.test(raw) && /-/.test(m[0])) continue;
           if (/b"[^"]*"/.test(raw)) continue;                            // PDA-литералы Rust
@@ -332,6 +357,9 @@ export function toMarkdown(plan) {
     'и совпадают с `sha256(\"global:<canonical>\")[0..8]`); старые имена обязаны ронять гейт.',
     'Anchor-механика `seeds` (`seeds = [...]`, `findProgramAddressSync(seeds, …)`, `signer_seeds`) не',
     'переименовывается и остатком не считается.',
+    'Существующий lottery pool `potato` — отдельный sealed pool ID, не `ResourceKind`: исключены только',
+    'его sealed API-строка, соответствующие подписи/копия и art key; `potato_mint` и resource fields',
+    'по-прежнему являются остатками и роняют гейт.',
     '',
     '## Порядок работ (шаг C владельца, сверху вниз, один вертикальный срез за раз)',
     '',

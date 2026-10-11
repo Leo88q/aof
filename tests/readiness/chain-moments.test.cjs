@@ -33,7 +33,7 @@ test("durability enchant enters the same subtraction and a session still costs o
   assert.match(source, /if loss == 0 \{ 1 \} else \{ loss \}/);
   assert.match(source, /DURABILITY_ENCHANT_SLOT: u8 = 1/);
   assert.match(read("aof_backend/src/routes/tools.ts"), /enchantSlotPda\(mint, 1\)/);
-  assert.match(read("frontend/src/lib/transactionIntent.ts"), /collect_mining_delegated/);
+  assert.match(read("frontend/src/lib/transactionIntent.ts"), /spec\.name\.startsWith\("collect_mining"\)/);
 });
 
 test("screens name the existing chain moments without inventing a drop", () => {

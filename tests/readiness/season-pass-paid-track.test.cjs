@@ -19,15 +19,8 @@ test('paid season sales stay fail-closed while claims use independent premium le
 
   assert.match(purchase, /require!\(false, AofError::SeasonPremiumRequired\)/,
     'the on-chain purchase instruction stays closed until the separate acceptance gate passes');
-  assert.ok(purchase.indexOf('require!(false') < purchase.indexOf('system_program::transfer'),
-    'the closed purchase path must fail before any SOL transfer');
-  for (const guard of ['SeasonNotStarted', 'SeasonEnded', 'SeasonPassAlreadyPremium', 'SEASON_LENGTH_SECONDS']) {
-    assert.ok(purchase.includes(guard), `purchase handler is missing ${guard}`);
-  }
-  assert.ok(purchase.indexOf('SeasonPassAlreadyPremium') < purchase.indexOf('system_program::transfer'),
-    'duplicate purchase must be rejected before SOL moves');
-  assert.match(purchase, /SEASON_PASS_PREMIUM_PRICE_LAMPORTS/);
-  assert.match(purchase, /premium_claims\.claimed_bitmap\s*=\s*0/);
+  assert.doesNotMatch(purchase, /system_program::transfer|SeasonPassPurchased|premium_claims\.claimed_bitmap/,
+    'a direct program call must fail before moving SOL or initializing a premium ledger');
   assert.match(lib, /pub premium_claims: Account<'info, SeasonPremiumClaims>/);
   assert.match(lib, /pub struct ClaimPremiumSeasonReward/);
   assert.match(premiumClaim, /premium_claims\.claimed_bitmap/);

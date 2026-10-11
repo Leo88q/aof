@@ -116,27 +116,33 @@ test('запись о несуществующей инструкции, неи�
 
 test('статус в классификации обязан совпадать с кодом: отключённое не может быть «active» и наоборот', () => {
   withRoot((tmp) => {
-    // The live purchase path is implemented. A restored hard stub must not stay classified active.
-    edit(tmp, 'aof-core/src/instructions/season.rs', (src) => src.replace(
-      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {\n',
-      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {\n    require!(false, AofError::SeasonPremiumRequired);\n',
-    ));
+    // Paid-pass purchase is currently hard-disabled until the separate release gate passes.
+    assert.equal(run(['--write', '--root', tmp]).code, 0);
+    editJson(tmp, 'security/instruction-roles.json', (roles) => {
+      roles.programs.aof_core.purchase_season_pass.status = 'active';
+      return roles;
+    });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
     assert.match(result.out, /aof_core\.purchase_season_pass: код отключает инструкцию .* статус 'active'/);
   });
   withRoot((tmp) => {
+    assert.equal(run(['--write', '--root', tmp]).code, 0);
     editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.set_fees.status = 'disabled-on-chain'; return roles; });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
     assert.match(result.out, /aof_core\.set_fees: в классификации инструкция отключена, но в коде этого не видно/);
   });
   withRoot((tmp) => {
-    // Classifying the implemented purchase as disabled must fail: the hard stub is gone.
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'disabled-on-chain'; return roles; });
+    // Dynamic session CPI is now fail-closed; the inventory must reject an active classification.
+    assert.equal(run(['--write', '--root', tmp]).code, 0);
+    editJson(tmp, 'security/instruction-roles.json', (roles) => {
+      roles.programs.aof_session_keys.session_execute.status = 'active';
+      return roles;
+    });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
-    assert.match(result.out, /aof_core\.purchase_season_pass: в классификации инструкция отключена, но в коде этого не видно/);
+    assert.match(result.out, /aof_session_keys\.session_execute: код отключает инструкцию .* статус 'active'/);
   });
 });
 

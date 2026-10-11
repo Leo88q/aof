@@ -182,13 +182,21 @@ test('#1 #22 every init / init_if_needed is a PDA with payer, space and the Syst
 });
 
 test('#4 program and sysvar accounts are type- or address-checked', () => {
-  const VALUE_ACCOUNTS = new Set(['aof_session_keys::SessionCreate.target_program']);
+  const VALUE_ACCOUNTS = new Set(['aof_session_keys::SessionCreate.target_program', 'aof_session_keys::SessionExecute.target_program']);
   for (const [program, { structs }] of Object.entries(sources)) {
     for (const [name, fields] of structs) {
       for (const f of fields) {
         const where = `${program}::${name}.${f.name}`;
         if (/_program$/.test(f.name) && !VALUE_ACCOUNTS.has(where)) {
           assert.match(f.type, /^(Box<)?(Program|Interface)</, `${where}: CPI target must be Program<..>`);
+        }
+        if (where === 'aof_session_keys::SessionCreate.target_program') {
+          assert.match(f.attrs, /\bexecutable\b/, `${where}: a stored target must be an executable program`);
+        }
+        if (where === 'aof_session_keys::SessionExecute.target_program') {
+          assert.match(f.attrs, /\baddress\s*=\s*session\.target_program/,
+            `${where}: target must be pinned to the session record`);
+          assert.match(f.attrs, /\bexecutable\b/, `${where}: target must be executable`);
         }
         if (/slot_?hashes|recent_blockhashes|^rent$|^clock$|^instructions$/.test(f.name) && !/^Sysvar</.test(f.type)) {
           assert.match(f.attrs, /\baddress\s*=/, `${where}: sysvar passed without an address check`);
@@ -204,7 +212,7 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
     ['aof_market::InitConfig.treasury', 'treasury chosen once by the upgrade authority'],
     ['aof_session_keys::InitSkConfig.oracle_authority', 'oracle key chosen by the upgrade authority'],
     ['aof_session_keys::SessionCreate.session_signer', 'delegate chosen by the signing owner'],
-    ['aof_session_keys::SessionCreate.target_program', 'program id stored in the session'],
+    ['aof_session_keys::SessionCreate.target_program', 'executable program id stored in the session'],
   ]);
   // Quest proof is not a free account: the handler derives the core PDA and
   // reads the progress fields before marking the quest proved.
@@ -222,6 +230,11 @@ test('#2 #16 every unchecked account is documented and bound to something', () =
         assert.match(f.docs, /\/\/\/\s*CHECK:/, `${where}: missing /// CHECK: justification`);
         const own = /\b(seeds|address|constraint)\s*=/.test(f.attrs);
         const byOthers = fields.some((x) => x !== f && new RegExp(`\\b${f.name}\\.key\\(\\)`).test(x.attrs));
+        if (where === 'aof_session_keys::SessionExecute.target_program') {
+          assert.match(f.attrs, /\baddress\s*=\s*session\.target_program/,
+            `${where}: target must be pinned to the session record`);
+          assert.match(f.attrs, /\bexecutable\b/, `${where}: target must be executable`);
+        }
         const handlerBound = HANDLER_BOUND.get(where);
         if (handlerBound) {
           assert.match(read(handlerBound), /require_progress\(/, `${where}: handler must validate the proof`);
@@ -455,6 +468,40 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
     }
     assert.equal([...body.matchAll(/remaining_accounts/g)].length, 1, 'remaining_accounts читается один раз и только как pairs');
   }
+
+  // Mining uses a single optional enchant PDA. It must be the canonical PDA
+  // for this tool and slot, owned by aof_core, and Anchor-deserialized; extra
+  // caller-supplied accounts are refused rather than silently ignored.
+  const ENCHANT_SOURCE = 'aof-core/src/instructions/collect_mining.rs';
+  const enchant = stripComments(withoutInlineTests(read(ENCHANT_SOURCE)));
+  for (const [re, why] of [
+    [/remaining\.len\(\) <= 1/, 'at most one enchant account'],
+    [/find_program_address\([\s\S]*ENCHANT_SLOT_SEED,[\s\S]*tool_mint\.as_ref\(\),[\s\S]*slot_type[\s\S]*&crate::ID/, 'canonical tool/slot PDA'],
+    [/info\.key\(\) == expected/, 'derived address equality'],
+    [/info\.owner == &crate::ID/, 'program ownership'],
+    [/EnchantSlot::try_deserialize/, 'Anchor owner/discriminator deserialization'],
+    [/slot\.tool_mint == \*tool_mint/, 'stored tool binding'],
+    [/slot\.slot_type == slot_type/, 'stored slot binding'],
+    [/slot\.level <= ENCHANT_MAX_LEVEL/, 'bounded level'],
+  ]) assert.match(enchant, re, `enchant remaining account missing ${why}`);
+  const startMining = stripComments(withoutInlineTests(read('aof-core/src/instructions/start_mining.rs')));
+  assert.match(startMining,
+    /enchant_slot_level\([\s\S]{0,220}SPEED_ENCHANT_SLOT,[\s\S]{0,80}&ctx\.remaining_accounts/,
+    'start_mining must validate its one optional speed slot through the typed PDA helper');
+  assert.equal([...startMining.matchAll(/ctx\.remaining_accounts/g)].length, 1,
+    'start_mining may read remaining accounts only through its single typed enchant check');
+  assert.match(enchant,
+    /durability_enchant_level\(&ctx\.accounts\.mint\.key\(\),\s*&ctx\.remaining_accounts\)/,
+    'collect_mining must validate its optional durability slot through the typed PDA helper');
+  assert.equal([...enchant.matchAll(/ctx\.remaining_accounts/g)].length, 1,
+    'collect_mining may read remaining accounts only through its single typed enchant check');
+  const rentalDelegation = stripComments(withoutInlineTests(read('aof-core/src/instructions/rental_delegation.rs')));
+  assert.equal([...rentalDelegation.matchAll(/&ctx\.remaining_accounts/g)].length, 2,
+    'rental delegation may only pass remaining accounts to the two typed enchant checks');
+  assert.match(rentalDelegation,
+    /enchant_slot_level\([\s\S]{0,220}SPEED_ENCHANT_SLOT,[\s\S]{0,80}&ctx\.remaining_accounts/);
+  assert.match(rentalDelegation,
+    /durability_enchant_level\([\s\S]{0,120}&ctx\.remaining_accounts/);
   for (const [program, { code }] of Object.entries(sources)) {
     for (const [re, why] of banned) {
       let scope = code;
@@ -462,7 +509,12 @@ test('#8 #24 #30 no raw CPI, no instruction introspection, no manual account dec
         scope = scope.replace(fnBody(read(METAPLEX_SETTLEMENT), 'mint_tool_nft'), '');
       }
       if (/unvalidated remaining_accounts/.test(why) && program === 'aof_core') {
-        scope = scope.replace(stripComments(withoutInlineTests(read(REMAINING_ACCOUNTS))), '');
+        for (const rel of [REMAINING_ACCOUNTS,
+          'aof-core/src/instructions/collect_mining.rs',
+          'aof-core/src/instructions/start_mining.rs',
+          'aof-core/src/instructions/rental_delegation.rs']) {
+          scope = scope.replace(stripComments(withoutInlineTests(read(rel))), '');
+        }
       }
       assert.doesNotMatch(scope, re, `${program}: ${why}`);
     }
@@ -495,6 +547,7 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
     ['aof_core::craft.tool_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::reroll.new_type', 'canonicalised to TOOL_KINDS'],
     ['aof_core::set_tool_metadata_uris.metadata_uris', 'batch length and each HTTPS URI are bounded in the handler'],
+    ['aof_session_keys::session_execute.ix_data', 'legacy ABI payload is never consumed: the first handler statement fails closed, and the Solana packet limit bounds serialized input'],
   ]);
   let args = 0;
   for (const [program, { dir }] of Object.entries(sources)) {
@@ -512,6 +565,11 @@ test('#18 no unbounded per-call input: collection arguments are allowlisted and 
     }
   }
   assert.ok(args > 50, `suspiciously few instruction arguments parsed (${args})`);
+  const sessionSource = read('programs/aof-session-keys/src/lib.rs');
+  const sessionExecute = fnBody(sessionSource, 'session_execute');
+  assert.match(sessionExecute, /\{\s*err!\(SkError::AtomicBindingRequired\)/,
+    'the legacy ABI rejects before touching the dynamic payload');
+  assert.doesNotMatch(sessionExecute, /ix_data\.len|data:\s*ix_data|invoke\(/);
   for (const f of ['craft.rs', 'reroll.rs', 'mint_tool.rs']) {
     assert.match(stripComments(core(`instructions/${f}`)), /canonical_tool_type\(|is_valid_tool_type\(/, f);
   }
@@ -625,12 +683,11 @@ test('F-D the well prices every second at its own day, not at the cached weather
   assert.match(fnBody(core('instructions/weather_crank.rs'), 'handler'), /weather_for_day\(/);
 });
 
-test('season passes are sold once and only inside their season', () => {
+test('season-pass purchases remain fail-closed on-chain until release acceptance', () => {
   const pass = fnBody(core('instructions/season.rs'), 'purchase_pass_handler');
-  for (const guard of ['SeasonNotStarted', 'SeasonEnded', 'SeasonPassAlreadyPremium', 'SEASON_LENGTH_SECONDS']) {
-    assert.ok(pass.includes(guard), guard);
-  }
-  assert.ok(pass.indexOf('SeasonPassAlreadyPremium') < pass.indexOf('system_program::transfer'), 'guards before payment');
+  assert.match(pass, /require!\(false, AofError::SeasonPremiumRequired\)/);
+  assert.doesNotMatch(pass, /system_program::transfer|SeasonPassPurchased/,
+    'direct RPC calls cannot bypass the backend/UI acceptance gate');
 });
 
 test('migrate_tool is gone from the program, the IDL and the clients (plan item 12, step B)', () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { repairCopy } from "../../i18n/repairCopy";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
 import { homeResourceNames } from "../../i18n/homeDetail";
 import { toolName, toolsCopy } from "../../i18n/toolsCopy";
 import { api } from "../../lib/api";

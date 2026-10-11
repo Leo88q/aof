@@ -84,7 +84,7 @@ test('прямые переименования и запреты шага C з�
   assert.match(doc, /без алиасов и совместимости/);
   assert.match(doc, /варианты enum не переставлять/);
   assert.match(doc, /удалять AmberQuartz, SoulCore, Data, Dataset, Compute, Mind/);
-  assert.match(doc, /семь отключённых инструкций/);
+  assert.match(doc, /Существующий lottery pool `potato` — отдельный sealed pool ID/);
   assert.match(doc, /layout-report обязателен/);
   assert.doesNotMatch(doc, /временно поддерживаем оба имени|alias keeps/i);
 });
@@ -123,6 +123,18 @@ pub fn plant_seeds(ctx: Context<PlantSeeds>) -> Result<()> { Ok(()) }
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
     assert.match(result.out, /legacy-идентификаторов в active code: 2/);
+  });
+});
+
+test('sealed lottery pool is not a resource field, but potato_mint remains a hard failure', () => {
+  withRoot((tmp) => {
+    const baseline = JSON.parse(run(['--root', tmp]).out);
+    assert.equal(baseline.left, 0, 'the retained sealed chamber must not count as an active ResourceKind alias');
+    append(tmp, 'frontend/src/pages/market/LotteryHall.tsx', '\nconst unexpectedResourceMint = "potato_mint";\n');
+    const mutated = JSON.parse(run(['--root', tmp]).out);
+    assert.ok(mutated.layers.flatMap((layer) => layer.hits).some((hit) =>
+      hit.file === 'frontend/src/pages/market/LotteryHall.tsx' && hit.text.includes('potato_mint')),
+    'a real legacy mint/resource identifier must not be hidden by the sealed-pool classifier');
   });
 });
 

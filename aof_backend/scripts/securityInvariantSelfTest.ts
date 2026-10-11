@@ -123,7 +123,7 @@ assert.match(siteMechanics, /does not imply that any instruction is enabled on-c
 const appNotice = read("frontend/src/components/ui/FeatureDisabledNotice.tsx");
 const backendRoute = (file: string) => read(`aof_backend/src/routes/${file}`);
 const disabledLayers: Array<{ id: string; route: string; code: RegExp; guard: [string, RegExp] }> = [
-  { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /require!\(false, SkError::AtomicBindingRequired\)/] },
+  { id: "trust", route: "session.ts", code: /503/, guard: ["programs/aof-session-keys/src/lib.rs", /err!\(SkError::AtomicBindingRequired\)/] },
 ];
 for (const layer of disabledLayers) {
   assert.match(read(layer.guard[0]), layer.guard[1], `${layer.id}: on-chain guard missing`);

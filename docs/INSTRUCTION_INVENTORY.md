@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 129 | 0 | 95 (74%) | 13 | 1 |
+| aof_core | 129 | 1 | 95 (74%) | 13 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 16 | 0 | 0 (0%) | 2 | 2 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
-| aof_session_keys | 7 | 1 | 0 (0%) | 5 | 1 |
-| **всего** | **175** | **1** | **101** (58%) | **20** | **4** |
+| aof_session_keys | 7 | 2 | 0 (0%) | 5 | 0 |
+| **всего** | **175** | **3** | **101** (58%) | **20** | **3** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -40,13 +40,15 @@
 | deprecated | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | candidate-dead-code | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-## Отключены в коде (1)
+## Отключены в коде (3)
 
 Первая команда обработчика — `require!(false, …)` или `err!(…)`: инструкция есть в IDL, но на цепи всегда отказывает.
 
 | Инструкция | Роль | Заметка |
 |---|---|---|
+| aof_core.purchase_season_pass | gameplay | Продажа закрыта до отдельной Devnet acceptance: прямой вызов возвращает SeasonPremiumRequired до перевода SOL. |
 | aof_session_keys.session_check_and_spend | gameplay | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
+| aof_session_keys.session_execute | gameplay | Fail-closed: произвольный CPI не входит в проверенный allowlist; вызов возвращает AtomicBindingRequired до мутации счётчика или CPI. |
 
 ## Без найденных call sites (20)
 
@@ -74,7 +76,7 @@
 | aof_session_keys.session_create | gameplay | active | readiness | Создание сессии владельцем. Трата остаётся в session_check_and_spend, не в произвольном вызове. |
 | aof_session_keys.session_pause | gameplay | active | selfTests | Пауза сессии владельцем (пользовательская защита). |
 | aof_session_keys.session_revoke | gameplay | active | selfTests | Отзыв сессии владельцем (пользовательская защита). |
-| aof_session_keys.session_execute | gameplay | active | — | Живой внешний вызов сессии. Программа цели не должна приходить от вызывающего как произвольный CPI; это открытая проверка #114, не заглушка. |
+| aof_session_keys.session_execute | gameplay | disabled-on-chain | readiness | Fail-closed: произвольный CPI не входит в проверенный allowlist; вызов возвращает AtomicBindingRequired до мутации счётчика или CPI. |
 
 ## Полный список
 
@@ -139,7 +141,7 @@
 | aof_core | place_buy_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | place_sell_order | compatibility | active | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
 | aof_core | plant_neuron | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | purchase_season_pass | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 | ✓ |
+| aof_core | purchase_season_pass | gameplay | disabled-on-chain | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 1 | ✓ |
 | aof_core | referral_bind | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | referral_upgrade | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
@@ -147,7 +149,7 @@
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
 | aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 1 | 0 | 2 | 0 | 1 | 0 |  |
 | aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
-| aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 |  |
+| aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | repair_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | reroll | gameplay | active | 3 | 1 | 1 | 0 | 1 | 0 | 1 | 4 | 7 | 0 | ✓ |
 | aof_core | reroll_random_commit | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 2 | 0 | ✓ |
@@ -257,4 +259,4 @@
 | aof_session_keys | session_pause | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_session_keys | session_revoke | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |  |
 | aof_session_keys | trust_snapshot_update | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
-| aof_session_keys | session_execute | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
+| aof_session_keys | session_execute | gameplay | disabled-on-chain | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |

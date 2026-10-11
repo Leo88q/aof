@@ -15,7 +15,7 @@ const cappedMintPaths = [
   { context: 'CollectModel', handler: 'collect_model.rs', instruction: 'collect_model', field: 'issuance_cap_model' },
   { context: 'CollectPower', handler: 'collect_power.rs', instruction: 'collect_power', field: 'issuance_cap_power' },
   { context: 'ClaimSeasonReward', handler: 'season.rs', instruction: 'claim_season_reward', field: 'issuance_cap_circuit' },
-  { context: 'ClaimPremiumSeasonReward', handler: 'season.rs', instruction: 'claim_premium_season_reward', field: 'issuance_cap_circuit' },
+  { context: 'ClaimPremiumSeasonReward', handler: 'season.rs', instruction: 'claim_premium_season_reward', field: 'issuance_cap_silicon' },
 ];
 
 test('mint handlers, Anchor contexts, and IDL use the same issuance-cap account names', () => {

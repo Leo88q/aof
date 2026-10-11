@@ -19,4 +19,7 @@ test('all six resource-drift metrics and the committed report are current', () =
   const result = check();
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /all required metrics are zero/);
+  const report = require('node:fs').readFileSync(path.join(root, 'docs/RESOURCE_DRIFT.md'), 'utf8');
+  assert.match(report, /\`potato_mint\` and resource-field uses still fail the gate/,
+    'the retained sealed lottery pool is documented as a narrow non-resource identifier, not a general alias allowlist');
 });

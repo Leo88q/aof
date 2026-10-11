@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocale } from "../i18n/LocaleProvider";
 import { labHeroCopy } from "../i18n/labHeroCopy";
 import { chainMomentCopy } from "../i18n/chainMomentCopy";
-import { forecastFromDayId, loadWeather, WEATHER_BY_INDEX, weatherIndexForDay } from "../lib/weather";
+import { fetchWeatherSnapshot, forecastFromDayId, WEATHER_BY_INDEX, weatherIndexForDay } from "../lib/weather";
 
 export function ChainClocks() {
   const { language } = useLocale();

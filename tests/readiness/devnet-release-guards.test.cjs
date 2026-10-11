@@ -7,7 +7,7 @@ const { spawnSync } = require('node:child_process');
 const root = join(__dirname, '../..');
 const source = path => readFileSync(join(root, path), 'utf8');
 
-test('drum and mind-spin stay deleted; paid season sales stay UI-gated', () => {
+test('drum and mind-spin stay deleted; paid season sales stay program/UI-gated', () => {
   const { existsSync } = require('node:fs');
   for (const rel of [
     'aof_backend/src/routes/drum.ts',
@@ -24,8 +24,14 @@ test('drum and mind-spin stay deleted; paid season sales stay UI-gated', () => {
   assert.match(seasonRoute, /SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE/);
   assert.match(seasonRoute, /coSignQuoted\(\[ix\], user/);
   const seasonProgram = source('aof-core/src/instructions/season.rs');
-  assert.match(seasonProgram, /pub fn purchase_pass_handler/);
-  assert.doesNotMatch(seasonProgram, /require!\(\s*false/, 'season purchase must not be a hard stub');
+  const purchaseHandler = seasonProgram.slice(
+    seasonProgram.indexOf('pub fn purchase_pass_handler'),
+    seasonProgram.indexOf('/// XP is earned'),
+  );
+  assert.match(purchaseHandler, /require!\(false, AofError::SeasonPremiumRequired\)/,
+    'direct on-chain purchase calls stay closed until release acceptance');
+  assert.doesNotMatch(purchaseHandler, /system_program::transfer|SeasonPassPurchased|premium_claims/,
+    'the closed purchase path must fail before transfers or ledger side effects');
   assert.match(seasonProgram, /pub fn claim_premium_reward_handler/);
   assert.match(seasonProgram, /premium_claims\.claimed_bitmap/);
   assert.match(source('frontend/src/pages/profile/SeasonPassPage.tsx'), /const PAID_PASS_READY = false/);

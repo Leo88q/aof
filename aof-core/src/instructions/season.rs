@@ -37,55 +37,10 @@ pub fn init_pass_handler(ctx: Context<InitSeasonPass>, season_id: u32) -> Result
     Ok(())
 }
 
-pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
-    // The chain accepts one purchase inside the season window. The interface
-    // sales gate stays closed until Devnet acceptance; that HTTP gate is not this
-    // contract boundary. A pass used to be sold for any season id at any time
-    // (including seasons that had ended) and a second purchase silently charged
-    // 0.15 SOL again for a flag that was already set. Validate every account
-    // before transferring the fixed, user-visible price.
-    let now = Clock::get()?.unix_timestamp;
-    let start = ctx.accounts.season.start_time;
-    require!(now >= start, AofError::SeasonNotStarted);
-    let end = start.checked_add(SEASON_LENGTH_SECONDS).ok_or(AofError::MathOverflow)?;
-    require!(now < end, AofError::SeasonEnded);
-
-    let user = ctx.accounts.user.key();
-    let season_id = ctx.accounts.season.season_id;
-    let pass = &mut ctx.accounts.season_pass;
-    if pass.owner == Pubkey::default() {
-        pass.owner = user;
-        pass.season_id = season_id;
-        pass.xp = 0;
-        pass.premium = false;
-        pass.claimed_bitmap = 0;
-    }
-    require_keys_eq!(pass.owner, user, AofError::Unauthorized);
-    require!(pass.season_id == season_id, AofError::SeasonMismatch);
-    require!(!pass.premium, AofError::SeasonPassAlreadyPremium);
-
-    let premium_claims = &mut ctx.accounts.premium_claims;
-    if premium_claims.owner == Pubkey::default() {
-        premium_claims.owner = user;
-        premium_claims.season_id = season_id;
-        premium_claims.claimed_bitmap = 0;
-        premium_claims.bump = ctx.bumps.premium_claims;
-    }
-    require_keys_eq!(premium_claims.owner, user, AofError::Unauthorized);
-    require!(premium_claims.season_id == season_id, AofError::SeasonMismatch);
-
-    system_program::transfer(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            system_program::Transfer {
-                from: ctx.accounts.user.to_account_info(),
-                to: ctx.accounts.treasury.to_account_info(),
-            },
-        ),
-        SEASON_PASS_PREMIUM_PRICE_LAMPORTS,
-    )?;
-    pass.premium = true;
-    emit!(SeasonPassPurchased { owner: user, season_id });
+pub fn purchase_pass_handler(_ctx: Context<PurchaseSeasonPass>) -> Result<()> {
+    // Keep the on-chain boundary closed as well as the HTTP/UI sales gate. A
+    // direct RPC caller must not bypass the Devnet acceptance gate.
+    require!(false, AofError::SeasonPremiumRequired);
     Ok(())
 }
 

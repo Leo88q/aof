@@ -1774,12 +1774,12 @@ fn auction_cancel_works_only_without_bids() {
 #[test]
 fn rental_fee_split_keeps_the_platform_share_and_refunds_pro_rata() {
     let split = |price: u64, secs: i64, bps: u16| rental_fee_split(price, secs, bps).ok();
-    assert_eq!(split(3_600, 3_600, 10_000), Some((3_420, 180)), "100% owner split clamped to 95%");
+    assert_eq!(split(3_600, 3_600, 10_000), Some((3_240, 360)), "100% owner split clamped to 90%");
     assert_eq!(split(3_600, 3_600, 8_000), Some((2_880, 720)));
     assert_eq!(split(3_600, 0, 8_000), None);
-    assert_eq!(rental_refund(3_420, 0, 100, 25), 2_565);
-    assert_eq!(rental_refund(3_420, 0, 100, 100), 0);
-    assert_eq!(rental_refund(3_420, 100, 200, 50), 3_420, "not started yet: everything back");
+    assert_eq!(rental_refund(3_240, 0, 100, 25), 2_430);
+    assert_eq!(rental_refund(3_240, 0, 100, 100), 0);
+    assert_eq!(rental_refund(3_240, 100, 200, 50), 3_240, "not started yet: everything back");
 }
 
 const RENT_PRICE_PER_HOUR: u64 = 3_600;
@@ -2788,7 +2788,7 @@ fn transfer_matrix_zero_one_max_and_dust() {
     let maker_fee = gross * ORDERBOOK_MAKER_FEE_BPS as u64 / 10_000;
     assert_eq!(dust.cpis, 1, "один токен-перевод обменянной единицы");
     assert_eq!((dust.buy_remaining, dust.sell_remaining), (0, 0), "единица обмена исполнена");
-    assert_eq!(maker_fee, 0, "на одной единице комиссия мейкера округляется вниз до нуля");
+    assert_eq!(maker_fee, 18, "комиссия мейкера равна 2% от 900 лампортов");
     assert_eq!(dust.seller_wallet, WALLET_LAMPORTS + gross - maker_fee, "выдано = продано минус комиссия");
     assert_eq!(dust.treasury, WALLET_LAMPORTS + taker_fee + maker_fee, "казна берёт ровно свои bps");
     assert_eq!(

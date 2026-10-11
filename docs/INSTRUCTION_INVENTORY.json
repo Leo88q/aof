@@ -36,11 +36,11 @@
       "deprecated": 0,
       "candidate-dead-code": 0
     },
-    "disabledOnChain": 1,
+    "disabledOnChain": 3,
     "validatorTested": 101,
     "sharedNames": 19,
     "withoutAnyCallSite": 20,
-    "withoutCallSiteAndTest": 4
+    "withoutCallSiteAndTest": 3
   },
   "programs": {
     "aof_core": {
@@ -55,7 +55,7 @@
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 0,
+      "disabledOnChain": 1,
       "validatorTested": 95,
       "sharedNames": 5,
       "withoutAnyCallSite": 13,
@@ -145,11 +145,11 @@
         "deprecated": 0,
         "candidate-dead-code": 0
       },
-      "disabledOnChain": 1,
+      "disabledOnChain": 2,
       "validatorTested": 0,
       "sharedNames": 0,
       "withoutAnyCallSite": 5,
-      "withoutCallSiteAndTest": 1
+      "withoutCallSiteAndTest": 0
     }
   },
   "instructions": [
@@ -781,7 +781,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 168
+        "line": 123
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -985,7 +985,7 @@
         "kind": "delegate",
         "path": "instructions::collect_mining::handler",
         "file": "aof-core/src/instructions/collect_mining.rs",
-        "line": 106
+        "line": 107
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -1989,7 +1989,7 @@
         "kind": "delegate",
         "path": "instructions::season::grant_xp_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 96
+        "line": 51
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -3510,11 +3510,11 @@
         "file": "aof-core/src/instructions/season.rs",
         "line": 40
       },
-      "disabledOnChain": false,
+      "disabledOnChain": true,
       "role": "gameplay",
-      "status": "active",
+      "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Покупка пропуска внутри сезона, один раз. Продажа в интерфейсе остаётся за PAID_PASS_READY, это не заглушка require!(false).",
+      "note": "Продажа закрыта до отдельной Devnet acceptance: прямой вызов возвращает SeasonPremiumRequired до перевода SOL.",
       "evidence": null,
       "callSites": {
         "backend": {
@@ -3980,13 +3980,6 @@
           "mentions": 0,
           "files": [
             "tests/aof_tool_ownership.ts"
-          ]
-        },
-        "readiness": {
-          "calls": 0,
-          "mentions": 1,
-          "files": [
-            "tests/readiness/chain-moments.test.cjs"
           ]
         }
       },
@@ -7432,7 +7425,7 @@
         "kind": "delegate",
         "path": "instructions::season::claim_premium_reward_handler",
         "file": "aof-core/src/instructions/season.rs",
-        "line": 229
+        "line": 184
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9018,7 +9011,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 251
+        "line": 233
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -9074,7 +9067,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 361
+        "line": 321
       },
       "disabledOnChain": true,
       "role": "gameplay",
@@ -9117,7 +9110,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 281
+        "line": 263
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9153,7 +9146,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 316
+        "line": 298
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9189,7 +9182,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 306
+        "line": 288
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9225,7 +9218,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 266
+        "line": 248
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -9261,22 +9254,31 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 328
+        "line": 312
       },
-      "disabledOnChain": false,
+      "disabledOnChain": true,
       "role": "gameplay",
-      "status": "active",
+      "status": "disabled-on-chain",
       "replacedBy": null,
-      "note": "Живой внешний вызов сессии. Программа цели не должна приходить от вызывающего как произвольный CPI; это открытая проверка #114, не заглушка.",
+      "note": "Fail-closed: произвольный CPI не входит в проверенный allowlist; вызов возвращает AtomicBindingRequired до мутации счётчика или CPI.",
       "evidence": null,
       "callSites": {},
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 2,
+          "files": [
+            "tests/readiness/ai-agent-surface.test.cjs",
+            "tests/readiness/security-checklist.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 0,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     }
   ]
