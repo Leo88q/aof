@@ -504,75 +504,13 @@
       "status": "ok",
       "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
     },
-    "aof_quests.DrumCommitCtx.drum_commit": {
-      "owner": "player",
-      "payer": "player",
-      "status": "ok",
-      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
-    },
-    "aof_quests.DrumExpire.user_mascot": {
-      "owner": "player",
-      "payer": "cranker-deposit",
-      "status": "ok",
-      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
-      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
-      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
-    },
-    "aof_quests.DrumReveal.user_mascot": {
-      "owner": "player",
-      "payer": "cranker-deposit",
-      "status": "ok",
-      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
-      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
-      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
-    },
-    "aof_quests.InitMindBank.mind_bank": {
-      "owner": "global",
-      "payer": "operator",
-      "status": "ok",
-      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
-    },
-    "aof_quests.InitMindBank.mind_vault": {
-      "owner": "global",
-      "payer": "operator",
-      "status": "ok",
-      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
-    },
     "aof_quests.InitQuestConfig.quest_config": {
       "owner": "global",
       "payer": "operator",
       "status": "ok",
       "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
     },
-    "aof_quests.MindSpinCommit.mind_commit": {
-      "owner": "player",
-      "payer": "player",
-      "status": "ok",
-      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
-    },
-    "aof_quests.MindSpinExpire.user_mind": {
-      "owner": "player",
-      "payer": "cranker-deposit",
-      "status": "ok",
-      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
-      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
-      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
-    },
-    "aof_quests.MindSpinReveal.user_mind": {
-      "owner": "player",
-      "payer": "cranker-deposit",
-      "status": "ok",
-      "reason": "ветка init недостижима: ATA обязан существовать уже на коммите, потому что стоимость списывается именно с него; в drum/mind механика дополнительно отключена",
-      "settlement": "игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же",
-      "refund": "возврат не нужен: ветка init не выполняется, lamports не тратятся"
-    },
     "aof_quests.QuestInit.quest_template": {
-      "owner": "global",
-      "payer": "operator",
-      "status": "ok",
-      "reason": "глобальная инфраструктура проекта (Config/реестр/пул/раунд), платит кошелёк проекта"
-    },
-    "aof_quests.QuestVrfPoolAdd.vrf_slot": {
       "owner": "global",
       "payer": "operator",
       "status": "ok",
@@ -607,6 +545,30 @@
       "payer": "service",
       "status": "ok",
       "reason": "снапшот доверия пишет oracle-сервис проекта своей подписью; это не кошелёк authority-оператора и не актив игрока"
+    },
+    "aof_quests.EngagementAccounts.engagement": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.NeighborVisit.engagement": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_quests.ProveQuestProgress.quest_progress": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.SealLaboratory.finale": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     }
   }
 }

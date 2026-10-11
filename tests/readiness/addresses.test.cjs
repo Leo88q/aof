@@ -12,8 +12,10 @@ test('registry agrees with Rust, IDL and exporter; placeholders never subscribed
   for (const p of registry.programs) {
     assert.equal(require(path.join(root, p.idl)).address, p.address);
     assert.ok(fs.readFileSync(path.join(root, p.source), 'utf8').includes(`declare_id!("${p.address}")`));
-    assert.equal(p.status, 'reference-unverified');
-    assert.equal(p.rpcVerifiedAt, null);
+    assert.equal(p.status, 'verified');
+    assert.equal(p.rpcVerifiedAt, '2026-10-08');
+    assert.match(p.bytecodeSha256Prefix, /^[0-9a-f]{12}$/);
+    assert.equal(p.upgradeAuthority, 'C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN');
   }
   for (const address of manifest.programIds) assert.ok(registry.programs.some(p => p.address === address));
   for (const p of registry.placeholders) assert.equal(p.address, null);

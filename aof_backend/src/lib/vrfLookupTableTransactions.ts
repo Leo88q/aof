@@ -17,6 +17,7 @@ import { toolMetadataRegistryPda, TOKEN_METADATA_PROGRAM_ID } from "./pda";
 import { requireAuthoritySigning } from "./tx";
 import { PayerCostQuote, PayerRentAccountSpec, quotePayerCosts } from "./payerQuote";
 import { sendConfirmedVersionedTransaction } from "./transactionLifecycle";
+import { preparePlayerDurableNonce } from "./playerNonce";
 
 // Keep 64 bytes of headroom below Solana's 1,232-byte packet limit. Readiness
 // tests use the same bound for VRF settlements and large tool-mint instructions.
@@ -82,15 +83,19 @@ async function buildVrfV0Transaction(
   instructions: TransactionInstruction[],
   feePayer: PublicKey,
   signers: Signer[],
+  durable = false,
 ): Promise<{ tx: VersionedTransaction; lifetime: { blockhash: string; lastValidBlockHeight: number } }> {
   await assertExpectedCluster();
   if (instructions.length === 0) throw new Error("Cannot build an empty VRF transaction");
   const lookupTable = await loadVrfAddressLookupTable();
-  const lifetime = await connection.getLatestBlockhash("confirmed");
+  const prepared = durable ? await preparePlayerDurableNonce(feePayer, instructions) : null;
+  const lifetime = prepared
+    ? { blockhash: prepared.blockhash, lastValidBlockHeight: prepared.lastValidBlockHeight }
+    : await connection.getLatestBlockhash("confirmed");
   const message = new TransactionMessage({
     payerKey: feePayer,
     recentBlockhash: lifetime.blockhash,
-    instructions,
+    instructions: prepared ? prepared.instructions : instructions,
   }).compileToV0Message([lookupTable]);
   const tx = new VersionedTransaction(message);
 
@@ -125,7 +130,7 @@ export async function coSignWithVrfLookupTable(
   feePayer: PublicKey,
   signers: Signer[] = [],
 ): Promise<string> {
-  const { tx } = await buildVrfV0Transaction(instructions, feePayer, signers);
+  const { tx } = await buildVrfV0Transaction(instructions, feePayer, signers, true);
   const simulation = await simulateTransaction(tx);
   if (!simulation.success) throw new Error(`Transaction simulation failed: ${simulation.error || "unknown error"}`);
   return Buffer.from(tx.serialize()).toString("base64");
@@ -137,7 +142,7 @@ export async function coSignWithVrfLookupTableQuoted(
   feePayer: PublicKey,
   rentAccounts: PayerRentAccountSpec[],
 ): Promise<{ tx: string; quote: PayerCostQuote }> {
-  const { tx, lifetime } = await buildVrfV0Transaction(instructions, feePayer, []);
+  const { tx, lifetime } = await buildVrfV0Transaction(instructions, feePayer, [], true);
   const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
   const simulation = await simulateTransaction(tx);
   if (!simulation.success) throw new Error(`Transaction simulation failed: ${simulation.error || "unknown error"}`);

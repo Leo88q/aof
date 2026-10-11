@@ -1,7 +1,7 @@
 [package]
 name = "aof-quests"
 version = "0.1.0"
-description = "Age of Farming Quests, Achievements, Challenges, Drum of Luck"
+description = "Age of Farming quests, achievements, challenges and engagement"
 edition = "2021"
 
 [lib]
@@ -14,7 +14,7 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
-# [F-06] Trust Switchboard's devnet program/queue instead of mainnet's.
+# Empty marker so devnet bringup can pass --features devnet. It does not select an oracle.
 devnet = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 

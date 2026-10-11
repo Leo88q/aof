@@ -9,8 +9,12 @@ import { api } from "../../lib/api";
 import { handleTxResponse } from "../../lib/txFlow";
 import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { useWalletStr } from "../../lib/useWalletStr";
+import { readEconomyBalances } from "../../lib/economyBalances";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { resourceIcon, UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
+import { FLASK_ENERGY_GAIN as SEAL_FLASK_GAIN } from "../../lib/chainMoments";
 
 /**
  * Фляги и энергия.
@@ -37,7 +41,7 @@ const FLASKS = [
 ] as const;
 
 /** Тир-лестница обязана совпадать с aof-core/constants.rs FLASK_ENERGY_GAIN. */
-const FLASK_ENERGY_GAIN = [5, 5, 8, 10, 20] as const;
+const FLASK_ENERGY_GAIN = SEAL_FLASK_GAIN;
 
 export function FlaskMarketplace() {
   const { language } = useLocale();
@@ -83,6 +87,21 @@ export function FlaskMarketplace() {
     }
     setExchanging(true);
     try {
+      const [raw, energyNow] = await Promise.all([
+        api.query.balances(walletAddr).catch(() => null),
+        api.energy.balance(walletAddr).catch(() => null),
+      ]);
+      const current = energyNow && typeof energyNow.amount === "number" ? energyNow.amount : null;
+      const cap = energyNow && typeof energyNow.cap === "number" ? energyNow.cap : null;
+      if (current !== null && cap !== null && current + whole > cap) {
+        toast.show(copy.tankFull, "error", language);
+        return;
+      }
+      const missing = shortagesFromBalances(readEconomyBalances(raw), [{ resource: "DATA", need: whole }]);
+      if (missing && missing.length > 0) {
+        toast.show(formatResourceShortage(language, missing), "error", language);
+        return;
+      }
       const resp = await api.resources.exchangeEnergy({ user: walletAddr, dataAmount: whole });
       const r = await handleTxResponse(resp);
       if (r.success) {
@@ -98,13 +117,28 @@ export function FlaskMarketplace() {
     }
   }
 
-  async function handleUseFlask(flaskType: number, gain: number) {
+  async function handleUseFlask(flaskType: number, gain: number, flaskKey: string) {
     if (!walletAddr) {
       toast.show(walletRuntimeCopy[language].connectWallet, "error", language);
       return;
     }
     setUsingFlask(flaskType);
     try {
+      const [raw, energyNow] = await Promise.all([
+        api.query.balances(walletAddr).catch(() => null),
+        api.energy.balance(walletAddr).catch(() => null),
+      ]);
+      const current = energyNow && typeof energyNow.amount === "number" ? energyNow.amount : null;
+      const cap = energyNow && typeof energyNow.cap === "number" ? energyNow.cap : null;
+      if (current !== null && cap !== null && current + gain > cap) {
+        toast.show(copy.tankFull, "error", language);
+        return;
+      }
+      const missing = shortagesFromBalances(readEconomyBalances(raw), [{ resource: flaskKey, need: 1 }]);
+      if (missing && missing.length > 0) {
+        toast.show(formatResourceShortage(language, missing), "error", language);
+        return;
+      }
       const resp = await api.tools.useFlask({ user: walletAddr, flaskType });
       const r = await handleTxResponse(resp);
       if (r.success) {
@@ -166,6 +200,7 @@ export function FlaskMarketplace() {
 
       <Card className="p-4">
         <h3 className="text-parchment font-bold text-sm mb-3">{copy.flaskCatalog}</h3>
+        <p className="text-straw text-xs break-words mb-3">{chainMomentCopy[language].drinkOrSeal}</p>
         <div className="space-y-2">
           {FLASKS.map((flask, index) => {
             const gain = FLASK_ENERGY_GAIN[index];
@@ -179,9 +214,9 @@ export function FlaskMarketplace() {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-straw text-xs max-w-[45%] break-words text-right">{copy.flaskNoPrice}</span>
-                  <span className="text-sprout-500 text-xs font-bold">+{gain}</span>
+                  <span className="text-sprout-500 text-xs font-bold">{chainMomentCopy[language].flaskLeavesSeal(gain)}</span>
                   <button
-                    onClick={() => handleUseFlask(flaskType, gain)}
+                    onClick={() => handleUseFlask(flaskType, gain, flask.key)}
                     disabled={usingFlask !== null}
                     className="btn btn-sm"
                   >

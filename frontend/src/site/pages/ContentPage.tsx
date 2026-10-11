@@ -41,7 +41,7 @@ import { resourcePlate } from '../../lib/visualAssets';
 import { Lamp, Rocker } from '../ui/Controls';
 import {
   PageTitle, Section, Button, Counter, ParchmentCard, StatusBadge,
-  CommitReveal, PackOpener, DrumInteract,
+  CommitReveal, PackOpener,
 } from '../ui/Components';
 
 export function ContentPage({ id }: { id: string }) {
@@ -168,7 +168,7 @@ export function ContentPage({ id }: { id: string }) {
       {id === 'packs' && <Section title={chance!.demoTitle}><PackOpener /></Section>}
       {id === 'lottery' && (
         <>
-          <Section title={chance!.demoTitle}><DrumInteract /></Section>
+
           <Section title={commitLabels[language].section}><CommitReveal /></Section>
         </>
       )}
@@ -292,6 +292,8 @@ export function ResourcesCatalog() {
                       <li>{copy.labels[r.category]}</li>
                       {recipes.produces.length > 0 && <li>{copy.recipeMakes(recipes.produces.length)}</li>}
                       {recipes.uses.length > 0 && <li>{copy.recipeUses(recipes.uses.length)}</li>}
+                      {recipes.sealRole === 'input' && <li>{copy.sealSpends}</li>}
+                      {recipes.sealRole === 'output' && <li>{copy.sealMints}</li>}
                     </ul>
                     <span className="site-resource__chain">
                       {copy.linkedLabel}: {r.relatedResources.map(id => resourceName(id, id)).join(' · ')}
@@ -315,6 +317,10 @@ export function ResourceDetail() {
   if (!resource) return <NotFound />;
   const copy = resourceDetailCopy[language];
   const recipes = resourceRecipes(resource.id as ResourceId, language);
+  const shown = {
+    produces: recipes.sealRole === 'output' ? [...recipes.produces, ...recipes.seal] : recipes.produces,
+    uses: recipes.sealRole === 'input' ? [...recipes.uses, ...recipes.seal] : recipes.uses,
+  };
   return (
     <div lang={language} className="site-resource-detail">
       <PageTitle eyebrow={resourceCatalogCopy[language].labels[resource.category]}
@@ -337,7 +343,7 @@ export function ResourceDetail() {
           {(['produces', 'uses'] as const).map(kind => (
             <ParchmentCard key={kind}>
               <h2>{copy[kind]}</h2>
-              {recipes[kind].length ? <ul>{recipes[kind].map(line =>
+              {shown[kind].length ? <ul>{shown[kind].map(line =>
                 <li key={line}><Link to="/site/recipes">{line}</Link></li>)}</ul> : <p>{copy.noRecipe}</p>}
             </ParchmentCard>
           ))}

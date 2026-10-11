@@ -13,14 +13,27 @@
     {
       "id": "authority",
       "what": "Authority программы: роли, конфиг, co-sign выплат и минтов",
-      "envVars": ["AUTHORITY_SECRET_KEY", "AUTHORITY_SECRET_KEY_FILE", "AUTHORITY_PUBKEY"],
+      "envVars": [
+        "AUTHORITY_SECRET_KEY",
+        "AUTHORITY_SECRET_KEY_FILE",
+        "AUTHORITY_PUBKEY"
+      ],
       "storage": "kms (цель), docker-secret (текущий этап)",
       "productionRequirement": "AUTHORITY_MODE=read-only до переезда в KMS/удалённый подписант; ключ только через *_FILE",
       "provenanceRequired": true,
-      "onChainLimits": ["VaultGuard (cap per epoch + max per tx)", "IssuanceCap", "set_paused/emergency_stop", "двухшаговая ротация authority"],
+      "onChainLimits": [
+        "VaultGuard (cap per epoch + max per tx)",
+        "IssuanceCap",
+        "set_paused/emergency_stop",
+        "двухшаговая ротация authority"
+      ],
       "rotation": "set_roles(новый operator) + ротация секрета; при утечке — немедленно, с записью в журнал инцидента",
       "compromiseAction": "set_roles на новый ключ, emergency_stop, разбор WalletOperation/AuditLog, ротация всех производных секретов",
-      "codeRefs": ["aof_backend/src/security/authorityGate.ts", "aof_backend/src/config.ts", "aof-core/src/instructions/roles.rs"]
+      "codeRefs": [
+        "aof_backend/src/security/authorityGate.ts",
+        "aof_backend/src/config.ts",
+        "aof-core/src/instructions/roles.rs"
+      ]
     },
     {
       "id": "guardian",
@@ -29,10 +42,17 @@
       "storage": "hardware-wallet (отдельный от authority), в production — участник Squads",
       "productionRequirement": "Не совпадает с authority; пауза предавторизована (docs/INCIDENT_KIT.md)",
       "provenanceRequired": true,
-      "onChainLimits": ["set_paused", "set_cashout_frozen", "emergency_stop"],
+      "onChainLimits": [
+        "set_paused",
+        "set_cashout_frozen",
+        "emergency_stop"
+      ],
       "rotation": "по регламенту Squads; при компрометации — ротация состава",
       "compromiseAction": "Сменить guardian через admin multisig, снять неизвестные паузы только после разбора",
-      "codeRefs": ["aof-core/src/instructions/set_paused.rs", "docs/SECURITY_RUNBOOK.md §8"]
+      "codeRefs": [
+        "aof-core/src/instructions/set_paused.rs",
+        "docs/SECURITY_RUNBOOK.md §8"
+      ]
     },
     {
       "id": "admin_multisig",
@@ -41,94 +61,152 @@
       "storage": "hardware-wallet у каждого подписанта, разные устройства/ОС/вендоры",
       "productionRequirement": "2-из-3, подписанты в разных местах, time lock на изменение состава/порога",
       "provenanceRequired": true,
-      "onChainLimits": ["SetFees с потолками", "set_pack_config", "set_resource_mints", "init_*_caps"],
+      "onChainLimits": [
+        "SetFees с потолками",
+        "set_pack_config",
+        "set_resource_mints",
+        "init_*_caps"
+      ],
       "rotation": "ротация подписантов при увольнении/подозрении; изменение состава — только через time lock",
       "compromiseAction": "Заморозить предложения, сменить состав через оставшиеся подписи, проверить историю proposal-аккаунтов",
-      "codeRefs": ["docs/SECURITY_RUNBOOK.md §1–3", "SECURITY_ACTIONS_PROPOSALS_2026-09-26.md §2"]
+      "codeRefs": [
+        "docs/SECURITY_RUNBOOK.md §1–3",
+        "SECURITY_ACTIONS_PROPOSALS_2026-09-26.md §2"
+      ]
     },
     {
       "id": "vrf_settler",
       "what": "Раскрытие VRF-коммитов и возвраты (permissionless-инструкции, ключ только на комиссии)",
-      "envVars": ["VRF_SETTLER_SECRET_KEY", "VRF_SETTLER_SECRET_KEY_FILE"],
+      "envVars": [
+        "VRF_SETTLER_SECRET_KEY",
+        "VRF_SETTLER_SECRET_KEY_FILE"
+      ],
       "storage": "docker-secret на отдельном хосте",
       "productionRequirement": "Отдельный кошелёк, не operator; отдельный RPC; standby на втором хосте (VRF_SETTLER_STANDBY_SLOTS)",
       "provenanceRequired": false,
-      "onChainLimits": ["permissionless reveal/refund: не может выбрать исход", "баланс ограничен флоатом на комиссии"],
+      "onChainLimits": [
+        "permissionless reveal/refund: не может выбрать исход",
+        "баланс ограничен флоатом на комиссии"
+      ],
       "rotation": "при подозрении; кошелёк держит минимум SOL",
       "compromiseAction": "Остановить воркер, пополнить/сменить кошелёк, ключ operator не затронут",
-      "codeRefs": ["aof_backend/src/lib/settlerSigner.ts", "docs/VRF_SWITCHBOARD.md"]
+      "codeRefs": [
+        "aof_backend/src/lib/settlerSigner.ts",
+        "aof-core/src/vrf.rs"
+      ]
     },
     {
       "id": "session_keystore",
       "what": "Шифрование сессионных ключей farm-trader (AES-256-GCM)",
-      "envVars": ["SESSION_KEYSTORE_KEY", "SESSION_KEYSTORE_KEY_FILE", "SESSION_KEYSTORE_DIR"],
+      "envVars": [
+        "SESSION_KEYSTORE_KEY",
+        "SESSION_KEYSTORE_KEY_FILE",
+        "SESSION_KEYSTORE_DIR"
+      ],
       "storage": "docker-secret",
       "productionRequirement": "Без ключа сервис не стартует; файлы ключей — только зашифрованные",
       "provenanceRequired": false,
-      "onChainLimits": ["SPL-делегаты: спенд сессий отключён до атомарной привязки"],
+      "onChainLimits": [
+        "SPL-делегаты: спенд сессий отключён до атомарной привязки"
+      ],
       "rotation": "перешифровка файлов; при утечке считать делегатов скомпрометированными и отзывать",
       "compromiseAction": "Отозвать сессии/делегатов, сменить ключ, проверить TraderExecution-журнал",
-      "codeRefs": ["aof_backend/src/lib/sessionKeys.ts", "SECURITY_CHECKLIST_GAMES_2026-09-26.md #65"]
+      "codeRefs": [
+        "aof_backend/src/lib/sessionKeys.ts",
+        "SECURITY_CHECKLIST_GAMES_2026-09-26.md #65"
+      ]
     },
     {
       "id": "admin_api",
       "what": "HTTP-доступ к /admin/* (полный) и read-only",
-      "envVars": ["ADMIN_TOKEN", "ADMIN_READ_TOKEN"],
+      "envVars": [
+        "ADMIN_TOKEN",
+        "ADMIN_READ_TOKEN"
+      ],
       "storage": "docker-secret",
       "productionRequirement": "Только за allowlist IP/VPN; nonProductionOnly маршруты возвращают 404; токены не в URL",
       "provenanceRequired": false,
       "onChainLimits": [],
       "rotation": "регулярно и при подозрении; разные токены для чтения и записи",
       "compromiseAction": "Ротация токена, разбор AuditLog по ip/userAgent, проверка админ-действий",
-      "codeRefs": ["aof_backend/src/middleware/adminAuth.ts"]
+      "codeRefs": [
+        "aof_backend/src/middleware/adminAuth.ts"
+      ]
     },
     {
       "id": "watchtower_exporter",
       "what": "Bearer-токен read-only экспортера метрик",
-      "envVars": ["WATCHTOWER_EXPORTER_TOKEN", "WATCHTOWER_PLAYER_HASH_SALT"],
+      "envVars": [
+        "WATCHTOWER_EXPORTER_TOKEN",
+        "WATCHTOWER_PLAYER_HASH_SALT"
+      ],
       "storage": "docker-secret",
       "productionRequirement": "Только внутренняя сеть/VPN, не публичный интернет",
       "provenanceRequired": false,
       "onChainLimits": [],
       "rotation": "при подозрении",
       "compromiseAction": "Ротация; следов изменений нет по построению (read-only)",
-      "codeRefs": ["watchtower/src/metrics.ts"]
+      "codeRefs": [
+        "watchtower/src/metrics.ts"
+      ]
     },
     {
       "id": "database",
       "what": "Операционная БД (SQLite → PostgreSQL overlay)",
-      "envVars": ["DATABASE_URL", "POSTGRES_PASSWORD"],
+      "envVars": [
+        "DATABASE_URL",
+        "POSTGRES_PASSWORD"
+      ],
       "storage": "docker-secret/env хоста",
       "productionRequirement": "Отдельные роли чтения/записи, бэкапы, append-only триггеры на журналах",
       "provenanceRequired": false,
       "onChainLimits": [],
       "rotation": "при миграции и при подозрении; бэкап-дrill",
       "compromiseAction": "Сменить пароль, проверить дампы, поднять append-only журналы, разобрать WalletOperation",
-      "codeRefs": ["docs/POSTGRES_MIGRATION.md", "docs/DATABASE_MIGRATIONS.md §2a"]
+      "codeRefs": [
+        "docs/POSTGRES_MIGRATION.md",
+        "docs/DATABASE_MIGRATIONS.md §2a"
+      ]
     },
     {
       "id": "rpc_provider",
       "what": "RPC-провайдеры: чтение состояния и отправка транзакций",
-      "envVars": ["RPC_URL", "SWITCHBOARD_GATEWAY_RPC_URL", "RPC_QUORUM_URLS"],
+      "envVars": [
+        "RPC_URL",
+        "SWITCHBOARD_GATEWAY_RPC_URL",
+        "RPC_QUORUM_URLS"
+      ],
       "storage": "docker-secret (URL содержит API-ключ)",
       "productionRequirement": "Для решений, ведущих к подписи, — кворум из ≥2 независимых провайдеров + своя нода (RPC_QUORUM_URLS, см. lib/rpcQuorum.ts); никогда не логировать URL целиком",
       "provenanceRequired": false,
-      "onChainLimits": ["решение о выплате/минте — только по finalized-аккаунтам, сверенным между провайдерами"],
+      "onChainLimits": [
+        "решение о выплате/минте — только по finalized-аккаунтам, сверенным между провайдерами"
+      ],
       "rotation": "ключ провайдера — при утечке из логов; провайдер — по регламенту",
       "compromiseAction": "Отозвать ключ, переключить на второй провайдер, сверить последние решения с собственной нодой",
-      "codeRefs": ["aof_backend/src/provider.ts", "aof_backend/src/lib/rpcQuorum.ts"]
+      "codeRefs": [
+        "aof_backend/src/provider.ts",
+        "aof_backend/src/lib/rpcQuorum.ts"
+      ]
     },
     {
       "id": "observability",
       "what": "Sentry DSN, соли для хэшей (WALLET_HASH_SALT, FINGERPRINT_SALT)",
-      "envVars": ["SENTRY_DSN", "WALLET_HASH_SALT", "FINGERPRINT_SALT"],
+      "envVars": [
+        "SENTRY_DSN",
+        "WALLET_HASH_SALT",
+        "FINGERPRINT_SALT"
+      ],
       "storage": "env/секрет окружения",
       "productionRequirement": "Sentry не должен получать секреты и сырые адреса; соли уникальны для окружения и не меняются на проде без нужды",
       "provenanceRequired": false,
       "onChainLimits": [],
       "rotation": "смена соли ломает сопоставимость истории — только по решению инцидент-менеджера",
       "compromiseAction": "Сменить DSN; соль — признать историю связей доступной внешнему наблюдателю при её утечке",
-      "codeRefs": ["aof_backend/src/lib/logger.ts", "aof_backend/src/lib/chainIndexerCore.ts"]
+      "codeRefs": [
+        "aof_backend/src/lib/logger.ts",
+        "aof_backend/src/lib/chainIndexerCore.ts"
+      ]
     },
     {
       "id": "multisig_signers",
@@ -137,10 +215,32 @@
       "storage": "hardware-wallet; отдельные машины; разные вендоры/ОС/локации",
       "productionRequirement": "3-из-5 для upgrade и казны, time lock ≥48 ч; один компрометирующий фактор не даёт 3 ключа (docs/TREASURY_AND_SIGNER_POLICY.md)",
       "provenanceRequired": true,
-      "onChainLimits": ["Squads spending limits", "timelock на изменение состава/порога", "pre-authorized pause"],
+      "onChainLimits": [
+        "Squads spending limits",
+        "timelock на изменение состава/порога",
+        "pre-authorized pause"
+      ],
       "rotation": "при увольнении, смене должности, подозрении или утечке; состав — только через time lock",
       "compromiseAction": "Экстренное предложение о смене состава, пауза выплат, публичное уведомление по шаблону (docs/INCIDENT_KIT.md)",
-      "codeRefs": ["docs/TREASURY_AND_SIGNER_POLICY.md", "docs/SECURITY_RUNBOOK.md §1"]
+      "codeRefs": [
+        "docs/TREASURY_AND_SIGNER_POLICY.md",
+        "docs/SECURITY_RUNBOOK.md §1"
+      ]
+    },
+    {
+      "id": "web_push",
+      "what": "Ключи Web Push (VAPID): подпись уведомлений браузеру, не ключ программы и не казна",
+      "envVars": [
+        "VAPID_PUBLIC_KEY",
+        "VAPID_PRIVATE_KEY",
+        "VAPID_SUBJECT"
+      ],
+      "storage": "docker-secret / env файла оператора, не в репозитории",
+      "productionRequirement": "пара только на VPS push-worker; приватный ключ не в клиенте и не в образе",
+      "provenanceRequired": false,
+      "onChainLimits": [],
+      "rotation": "новая пара VAPID и повторная подписка устройств; старая пара перестаёт доставлять",
+      "compromiseAction": "отозвать пару, сменить ключи, не использовать их для подписи транзакций"
     }
   ],
   "accounts": [

@@ -6,10 +6,13 @@ import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
 import { readEconomyBalances, economyResourceName } from "../../lib/economyBalances";
 import { WORKSHOP_RECIPES, canCraftRecipe } from "../../lib/workshopRecipes";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { useEconomyBalances } from "./useEconomyBalances";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { recipeWorkshopCopy } from "../../i18n/recipeWorkshopCopy";
 import { useWalletStore } from "../../store/walletStore";
+import { useNav } from "../../nav/NavContext";
+import { NavHeader } from "../../components/NavHeader";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
@@ -26,6 +29,7 @@ export function Workshop() {
   const { language } = useLocale();
   const copy = recipeWorkshopCopy[language];
   const { address } = useWalletStore();
+  const { push } = useNav();
   const [section, setSection] = useState<Section>("gems");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ language: typeof language; text: string } | null>(null);
@@ -57,7 +61,12 @@ export function Workshop() {
       // must not look like zero cost or zero balance.
       const fresh = readEconomyBalances(await api.query.balances(address));
       if (!fresh) { flash(copy.unavailable); return; }
-      if (!canCraftRecipe(recipe, fresh)) { flash(copy.insufficient); setRefreshKey(n => n + 1); return; }
+      if (!canCraftRecipe(recipe, fresh)) {
+        const missing = shortagesFromBalances(fresh, recipe.inputs.map(input => ({ resource: input.key, need: input.amount })));
+        flash(missing && missing.length > 0 ? formatResourceShortage(language, missing) : copy.insufficient);
+        setRefreshKey(n => n + 1);
+        return;
+      }
       const [input1Mint, input2Mint, outputMint] = await Promise.all([
         getMintAsync(recipe.inputs[0].key),
         getMintAsync((recipe.inputs[1] || recipe.inputs[0]).key),
@@ -77,7 +86,8 @@ export function Workshop() {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
       } else flash(result.error || walletRuntimeCopy[language].unconfirmedResponse);
     } catch (error) {
-      flash(actionErrorFeedback(error, language, walletRuntimeCopy[language].unconfirmedResponse));
+      const code = (error as { code?: unknown } | null)?.code;
+      flash(code === 'RECIPE_NOT_ON_THIS_PROGRAM' ? copy.programOld : actionErrorFeedback(error, language, walletRuntimeCopy[language].unconfirmedResponse));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -96,10 +106,15 @@ export function Workshop() {
           </button>
         ))}
       </div>
+      <button type="button" className="btn" onClick={() => {
+        void import("../farm/FinalePage").then(({ FinalePage }) => {
+          push("farm", "finale", (<><NavHeader headerId="finale" tabKey="farm" /><FinalePage /></>));
+        });
+      }}>{copy.seal}</button>
 
       {message?.language === language && <div role="status" className="workshop-msg"><NoticeMsg text={message.text} /></div>}
 
-      {(section === 'gems' || section === 'flasks') ? (
+      {(section === 'gems' || section === 'flasks' || section === 'transformations') ? (
         <>
           <p className="text-straw text-sm leading-relaxed" role="status">
             {state === 'disconnected' ? copy.connect : state === 'loading' ? copy.loading : state === 'error' ? copy.unavailable : ''}

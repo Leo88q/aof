@@ -266,7 +266,6 @@ test("эмодзи не выводятся текстом: плашки вмес
     assert.ok(notice.includes(emoji), `нет маппинга для ${emoji}`);
   }
   for (const file of [
-    "src/components/DrumSpin.tsx",
     "src/components/animations/RewardBurst.tsx",
     "src/pages/quests/QuestsHome.tsx",
     "src/pages/tools/CraftPage.tsx",
@@ -299,25 +298,7 @@ test("закрытые механики объясняются единым те
   assert.match(mining, /flashMsg\(`⏸️ \${copy.disabledMining}`\)/, "flash-сообщение должно брать переведённую причину из общего словаря");
 });
 
-test("барабан показывает локализованные статусы, а ошибка чтения журнала не считается пустым списком", async () => {
-  const drum = read("src/components/DrumSpin.tsx");
-  assert.match(drum, /drumCopy\[language\]/);
-  assert.match(drum, /actionErrorFeedback\(error, currentLanguage, drumCopy\[currentLanguage\]\.uncertain\)/);
-  assert.match(drum, /walletRef\.current !== address/);
-  assert.match(drum, /Number\.isFinite\(s\.prize\)/);
-  assert.ok(!drum.includes('toLocaleString("ru-RU")'));
-  const { drumCopy } = await import("../src/i18n/drumCopy.ts");
-  for (const language of ["en", "pt", "es", "vi", "id", "fil", "ru"] as const) {
-    const copy = drumCopy[language];
-    for (const key of ['title', 'spin', 'reveal', 'uncertain', 'paid', 'oracle'] as const) {
-      assert.ok(copy[key]);
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(copy[key]));
-    }
-    for (const key of ['cost', 'revealed', 'refunded'] as const) {
-      assert.ok(copy[key]('7').includes('7'));
-      if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(copy[key]('7')));
-    }
-  }
+test("ошибка чтения журнала не считается пустым списком", () => {
   const audit = read('src/pages/admin/AuditLogPage.tsx');
   assert.match(audit, /if \(readFailed\)/);
   assert.match(audit, /setReadFailed\(true\)/);
@@ -325,14 +306,12 @@ test("барабан показывает локализованные стат�
   assert.match(audit, /filteredLogs\.length === 0/);
 });
 
-test("барабан удачи называет ресурс канонически", () => {
-  const drum = read("src/components/DrumSpin.tsx");
-  assert.ok(!/MASCOT/.test(drum), "легаси-термин MASCOT вернулся в интерфейс");
-  assert.doesNotMatch(drum, /resourceIcon\("MIND"\)|[} ] MIND</, "MIND is not offered by the legacy drum UI");
-  assert.match(drum, /copy\.unavailable/);
-  assert.ok(!/🔻/.test(drum), "эмодзи-стрелка вернулась на барабан");
-  // ↩️ допустим только как префикс flash-сообщения — его разбирает NoticeMsg.
-  assert.ok(!/>\s*↩️/.test(drum), "↩️ снова рисуется как символ, а не плашкой");
+test("удалённый экран удачи не возвращается в клиент", () => {
+  assert.equal(existsSync(join(root, "src/components/DrumSpin.tsx")), false);
+  assert.equal(existsSync(join(root, "src/i18n/drumCopy.ts")), false);
+  assert.doesNotMatch(read("src/lib/api.ts"), /\bapi\.drum\b/);
+  assert.doesNotMatch(read("src/pages/farm/FarmDashboard.tsx"), /DrumSpin/);
+  assert.match(read("src/pages/farm/FarmDashboard.tsx"), /EngagementPage/);
 });
 
 test("UI узнаёт реальные fail-closed коды бэкенда", () => {
@@ -406,6 +385,8 @@ test("кошелёк: Wallet Standard и мобильный deep-link в Phantom
   assert.match(wallet, /standard:connect/, "без standard:connect подключение не работает");
   assert.match(wallet, /solana:signMessage/, "без solana:signMessage не подписываются walletProof");
   assert.match(wallet, /solana:signAndSendTransaction/, "без solana:signAndSendTransaction не уходят транзакции");
+  assert.match(wallet, /provider\.signTransaction\(tx\)/, "Phantom должен только подписать частично подписанную транзакцию");
+  assert.match(wallet, /connection\.sendRawTransaction\(raw/, "отправка идёт через RPC игры, не через signAndSendTransaction Phantom");
   assert.match(wallet, /phantom\.app\/ul\/browse/, "mobile deep-link обязан собираться по документации Phantom");
   assert.match(wallet, /encodeURIComponent/, "целевой URL в deep-link кодируется");
   const btn = read("src/components/ui/WalletButton.tsx");
@@ -1062,6 +1043,7 @@ test("фляги обещают ровно тот эффект, который �
   assert.match(page, /copy\.exchangeSubmit/, "у обмена обязана быть подпись кнопки из каталога");
   assert.match(page, /copy\.useSubmit/, "у применения фляги обязана быть подпись кнопки из каталога");
   assert.match(page, /setEnergy\(null\)/, "неудачное чтение энергии обязано оставлять состояние неизвестным");
+  assert.match(page, /copy\.tankFull/);
 
   // Эффект копирайта обязан совпадать с таблицей программы, а не жить сам по себе.
   const constants = read("../aof-core/src/constants.rs");
@@ -1327,6 +1309,19 @@ test('сетевая станция и барограф переводят ре�
   assert.match(panel, /api\.chain\.collectPower/);
   assert.match(panel, /wellCopy\[language\]/);
   assert.match(panel, /!weather \|\| !w/);
+  assert.match(panel, /WellHall/);
+  assert.match(panel, /import \{ stationLastCollectedAt \} from \"\.\/wellReadings\"/);
+  assert.match(panel, /import \{ WellHall \} from \"\.\/WellHall\"/);
+  assert.match(panel, /weatherAccountPresent !== false/);
+  assert.match(panel, /state.exists !== false/);
+  const hall = code('src/pages/farm/WellHall.tsx');
+  assert.match(hall, /\/assets\/well\/station\.jpg/);
+  assert.doesNotMatch(hall, /grid_accrual|powerBuffer/);
+  const { stationLastCollectedAt } = await import('../src/pages/farm/wellReadings');
+  assert.equal(stationLastCollectedAt(null), null);
+  assert.equal(stationLastCollectedAt({ lastCollectedAt: 0 }), null);
+  assert.equal(stationLastCollectedAt({ lastCollectedAt: 1_700_000_000 }), 1_700_000_000);
+  assert.equal(stationLastCollectedAt({ last_collected_at: '1700000001' }), 1700000001);
   assert.match(recorder, /known = forecast\.filter/);
   assert.match(recorder, /scaleLabels=\{\(\['drought', 'sunny', 'festival'\]/);
   assert.match(recorder, /ariaLabel=\{copy\.barograph\}/);
@@ -1352,6 +1347,8 @@ test('нейронная лаборатория переводит действ�
   assert.match(panel, /loadError \? \(/);
   assert.match(panel, /setLoadError\(true\)/);
   assert.match(panel, /!loadError && selectedCell !== null/);
+  assert.match(panel, /copy.retry/);
+  assert.match(panel, /resource: \"NEURON\", need: neuronAmount/);
   assert.match(panel, /copy\.started\(neuronAmount, selectedCell \+ 1\)/);
   assert.match(panel, /copy\.collected\(tileIndex \+ 1\)/);
   for (const language of languages) {
@@ -1463,6 +1460,8 @@ test("мастерская и галерея используют семь пе�
   assert.match(card, /const canCollect = tool.isMining && hasMiningEnd && done/,
     "неизвестное время завершения не означает готовность к сбору");
   assert.match(card, /hours: selectedHours/, "на сервер уходят те же часы, что показаны на карточке");
+  assert.match(card, /mine-start/, "доступная добыча не должна выглядеть серой неактивной кнопкой");
+  assert.ok(!/cursor-not-allowed/.test(card), "кнопка добычи снова помечена как недоступная, хотя флаг включён");
   const gallery = read("src/pages/tools/CollectionPage.tsx");
   assert.match(gallery, /homeResourceNames\[language\]/, "названия ресурсов должны совпадать с остальной игрой");
   assert.match(gallery, /copy.rarities\[i\]/, "редкости должны меняться с языком");
@@ -1613,7 +1612,7 @@ test("кладовая и гель различают подтверждённы
 });
 
 test("рецепты мастерской совпадают с инструкцией сети и не расходуют неизвестный баланс", async () => {
-  const { WORKSHOP_RECIPES, canCraftRecipe } = await import("../src/lib/workshopRecipes.ts");
+  const { WORKSHOP_RECIPES, canCraftRecipe, LABORATORY_SEAL } = await import("../src/lib/workshopRecipes.ts");
   const { readEconomyBalances, ALL_BALANCE_KEYS } = await import("../src/lib/economyBalances.ts");
   const mintToKey: Record<string, string> = Object.fromEntries(RESOURCE_MANIFEST.resources.map((resource: any) => [
     resource.mintSource.replace(/^config\./, 'cfg.').replace(/^material_mints\./, 'mm.'),
@@ -1637,6 +1636,13 @@ test("рецепты мастерской совпадают с инструкц
   });
   assert.deepEqual(WORKSHOP_RECIPES.map(({ id, inputs, output }) => ({ id, inputs, output })), network,
     'цены и продукты в мастерской должны совпадать с craft_recipe.rs');
+  const seal = read('../aof-core/src/instructions/seal_laboratory.rs');
+  const burns = [...seal.matchAll(/burn_in!\([^,]+, [^,]+, ((?:mm|cfg)\.[a-z_]+), (\d+) \* RESOURCE_UNIT/g)]
+    .map(match => ({ key: mintToKey[match[1]], amount: Number(match[2]) }));
+  assert.deepEqual([...LABORATORY_SEAL.inputs], burns, 'печать должна сжигать те же ресурсы, что seal_laboratory.rs');
+  assert.equal(LABORATORY_SEAL.output.key, 'SOUL_CORE');
+  assert.equal(LABORATORY_SEAL.output.amount, 1);
+  assert.match(seal, /ResourceKind::SoulCore, 1 \* RESOURCE_UNIT/);
   const zero = readEconomyBalances({ source: 'onchain', ...Object.fromEntries(ALL_BALANCE_KEYS.map(key => [key, 0])) });
   assert.ok(zero);
   assert.equal(canCraftRecipe(WORKSHOP_RECIPES[0], null), false);
@@ -1702,11 +1708,17 @@ test('листинги отличают сбой сети от пустых пр
     'absence of wallet transaction cannot be announced as a confirmed trade');
   assert.match(page, /BigInt\(row\.priceLamports\)/,
     'sonar must not fabricate a rounded zero when a listing has a small positive price');
+  assert.match(page, /listing-cats/, 'listings need a category the player can open');
+  assert.match(page, /row\.tool\?\.toolType/, 'a category must filter offers by tool type');
   const { listingCopy } = await import('../src/i18n/listingCopy.ts');
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
     assert.ok(listingCopy[language].listingsUnavailable);
     assert.ok(listingCopy[language].toolsUnavailable);
     assert.ok(listingCopy[language].invalidPrice);
+    assert.ok(listingCopy[language].categoryLabel);
+    assert.ok(listingCopy[language].allTools);
+    assert.ok(listingCopy[language].categoryEmpty);
+    if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(listingCopy[language].categoryEmpty));
   }
 });
 
@@ -1858,7 +1870,7 @@ test("кошелёк и предупреждение перед подключе
 
 test('история мастерской переведена целиком: пролог, шесть глав, метаданные и переключение языка', async () => {
   const { siteLore } = await import('../src/i18n/siteLore');
-  const ids = ['founding', 'guilds', 'market', 'drum', 'rebirth', 'today'];
+  const ids = ['founding', 'guilds', 'market', 'seal', 'rebirth', 'today'];
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
     const copy = siteLore[language];
     assert.ok(copy.lead && copy.heading);
@@ -1939,11 +1951,25 @@ test('экспедиция переведена и не выдаёт закры�
   assert.match(page, /api\.exploration\.status\(transmitter\.commit\)/);
   assert.match(page, /status\?\.state === 'pending'/);
   assert.match(page, /setTrip\('unavailable'\)/);
+  assert.match(page, /tripShortage/);
+  assert.match(page, /copy\.retry/);
   assert.match(page, /response\?\.explorationCommit !== transmitter\.commit/);
   assert.match(page, /typeof response\.tx !== 'string'/);
   assert.match(page, /typeof response\?\.tx !== 'string'/);
   assert.match(page, /walletRef\.current !== address/);
   assert.match(page, /setTrip\('closed'\); setNotice\('unknown'\)/, 'закрытый commit не считается успехом');
+  assert.match(page, /setInterval/);
+  assert.match(page, /ExplorationHall/);
+  assert.match(code('src/pages/farm/ExplorationHall.tsx'), /EXPLORATION_ART/);
+  assert.match(code('../aof_backend/src/routes/exploration.ts'), /fetchNullable\(explorationStatePda/);
+  const { EXPLORATION_SUCCESS_BPS, EXPLORATION_TRIPS_PER_DAY, explorationTierRule } = await import('../src/lib/explorationReadings.ts');
+  assert.deepEqual([...EXPLORATION_SUCCESS_BPS], [3000, 4000, 5000, 5500, 6000, 6000, 6500, 7000, 7500, 8000]);
+  assert.deepEqual([...EXPLORATION_TRIPS_PER_DAY], [1, 1, 1, 1, 1, 2, 2, 2, 2, 3]);
+  assert.equal(explorationTierRule(1)?.rewardMin, 2);
+  assert.equal(explorationTierRule(0), null);
+  for (const plate of ['bay.jpg', 'sonar.jpg']) {
+    assert.ok(existsSync(join(root, 'public/assets/exploration', plate)), plate);
+  }
   const { explorationCopy } = await import('../src/i18n/explorationCopy.ts');
   const keys = Object.keys(explorationCopy.ru);
   for (const language of ['en', 'pt', 'es', 'vi', 'id', 'fil', 'ru'] as const) {
@@ -2091,7 +2117,7 @@ test('FAQ сайта целиком переведён: 30 вопросов в �
 test('локальный журнал сайта переведён на семь языков и не выдаёт отметки за игровые награды', async () => {
   const { siteJournalCopy } = await import('../src/i18n/siteJournalCopy.ts');
   const { parseSiteJournal, siteBadgeIds, readSiteJournal } = await import('../src/site/siteJournal.ts');
-  assert.deepEqual(siteBadgeIds, ['reader', 'resource', 'commit', 'pack', 'drum', 'chronicler']);
+  assert.deepEqual(siteBadgeIds, ['reader', 'resource', 'commit', 'pack', 'chronicler']);
   const keys = Object.keys(siteJournalCopy.ru);
   for (const lang of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     const copy = siteJournalCopy[lang];
@@ -2180,8 +2206,8 @@ test('сайт о капсулах и розыгрыше: семь полных 
     }
     assert.equal(copy.packDemo.sizes.length, 3);
     assert.equal(copy.packDemo.samples.length, 4);
-    assert.equal(copy.drumDemo.rhythms.length, 3);
-    for (const key of ['packDemo', 'drumDemo'] as const) {
+    assert.equal('drumDemo' in copy, false);
+    for (const key of ['packDemo'] as const) {
       assert.deepEqual(Object.keys(copy[key]), Object.keys(siteChanceCopy.ru[key]));
       const strings = Object.values(copy[key]).flatMap(v => Array.isArray(v) ? v : typeof v === 'function' ? [v('sample')] : [v]) as string[];
       assert.ok(strings.every(s => s.trim()), `${language}.${key}: пустая строка`);
@@ -2196,9 +2222,7 @@ test('сайт о капсулах и розыгрыше: семь полных 
   assert.ok(!/Билет 0\.0008 SOL|Три размера — честные шансы/.test(read('src/site/content/pages.ts')), 'устаревшая стоимость/гарантия шансов вернулась');
   for (const route of ['packs', 'lottery']) assert.match(layout, new RegExp(`'${route}'`));
   assert.match(demos, /siteChanceCopy\[language\]\.packDemo/);
-  assert.match(demos, /siteChanceCopy\[language\]\.drumDemo/);
   assert.match(demos, /sample === null \? copy\.sealed : copy\.opened\(copy\.samples\[sample\]\)/, 'смена языка не должна оставлять образец на старом языке');
-  assert.match(demos, /result === null \? copy\.idle : copy\.rhythms\[result\]/, 'ритм должен меняться вместе с языком');
   assert.match(demos, /<fieldset className="site-options">/, 'подписи размеров должны иметь доступную группу');
   const styles = read('src/site/styles/site.css');
   assert.match(styles, /\.site-ritual \{ grid-template-columns: minmax\(0, 1fr\); \}/, 'на телефоне демонстрация должна ужиматься в одну колонку');
@@ -2261,7 +2285,7 @@ test('медальоны доверия переведены как иллюст
 
 test('игровая лотерея переведена: покупка только с потолком цены, неподтверждённых билетов и выигрыша нет', async () => {
   const { lotteryCopy } = await import('../src/i18n/lotteryCopy.ts');
-  const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket } = await import('../src/lib/lotteryReadings.ts');
+  const { lotteryPda, lotteryU64, readLotteryRound, readLotteryTickets, canRefundLotteryTicket, LOTTERY_SALES_SECONDS, LOTTERY_REFUND_AFTER_SECONDS } = await import('../src/lib/lotteryReadings.ts');
   const { Keypair } = await import('@solana/web3.js');
   const all = ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const;
   const fields = Object.keys(lotteryCopy.ru);
@@ -2296,6 +2320,15 @@ test('игровая лотерея переведена: покупка тол�
   assert.equal(lotteryU64('18446744073709551616'), false);
   assert.equal(lotteryU64('01'), false);
   assert.equal(lotteryU64('0', true), true);
+  assert.equal(LOTTERY_SALES_SECONDS, 7 * 86400);
+  assert.equal(LOTTERY_REFUND_AFTER_SECONDS, 14 * 86400);
+  assert.match(code('src/pages/market/LotteryHall.tsx'), /data-pool=\{id\}/);
+  assert.match(code('src/pages/market/LotteryHall.tsx'), /LOTTERY_ART/);
+  for (const plate of ['sol.jpg', 'skr.jpg', 'potato.jpg', 'drum.jpg']) {
+    assert.ok(existsSync(join(root, 'public/assets/lottery', plate)), plate);
+  }
+  assert.match(code('src/pages/market/LotteryPage.tsx'), /setInterval/);
+  assert.match(code('../aof_backend/src/routes/lottery.ts'), /POTATO_ESCROW_NOT_DEPLOYED/);
   const page = code('src/pages/market/LotteryPage.tsx');
   const backend = code('../aof_backend/src/routes/lottery.ts');
   assert.match(page, /lotteryCopy\[language\]/);
@@ -2678,7 +2711,7 @@ test('индекс инструкций использует точные име
   assert.match(siteDocs.en.groups.market.description, /paused/);
 });
 
-test('книга рецептов сайта показывает те же восемь составов, что и игровая мастерская, на семи языках', async () => {
+test('книга рецептов сайта показывает ту же таблицу, что и игровая мастерская, на семи языках', async () => {
   const { languages } = await import('../src/i18n/translations');
   const { siteRecipes } = await import('../src/i18n/siteRecipes');
   const { WORKSHOP_RECIPES } = await import('../src/lib/workshopRecipes');
@@ -2698,8 +2731,8 @@ test('книга рецептов сайта показывает те же во
   assert.ok(!existsSync(new URL('../src/site/content/recipes.ts', import.meta.url)));
   assert.ok(!code('src/site/content/game.ts').includes("'./recipes'"));
   assert.equal(pages.find(p => p.id === 'recipes')?.lead, siteRecipes.ru.lead);
-  assert.equal(WORKSHOP_RECIPES.length, 8);
-  assert.deepEqual(WORKSHOP_RECIPES.map(recipe => recipe.id), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(WORKSHOP_RECIPES.length, 18);
+  assert.deepEqual(WORKSHOP_RECIPES.map(recipe => recipe.id), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
   const ids = [...new Set(WORKSHOP_RECIPES.flatMap(recipe => [recipe.output.key, ...recipe.inputs.map(input => input.key)]))];
   for (const id of ids) assert.match(extras, new RegExp(`\\b${id}: '`), `${id}: нет имени ресурса в словаре`);
   assert.match(code('src/site/styles/site.css'), /site-recipe-grid > \*[^}]*overflow-wrap: anywhere/);
@@ -2884,10 +2917,15 @@ test('27 карточек ресурсов целиком локализован
       }
     }
   }
-  assert.equal(allRecipeLines.size, 8);
+  assert.equal(allRecipeLines.size, 18);
   assert.match(resourceRecipes('roseQuartz', 'en').uses[0], /3 /, 'recipe 6 must not repeat legacy five-quartz cost');
-  assert.deepEqual(resourceRecipes('mind', 'en'), { produces: [], uses: [] }, 'no fictional MIND exchange');
-  assert.deepEqual(resourceRecipes('amberQuartz', 'en'), { produces: [], uses: [] });
+  assert.equal(resourceRecipes('mind', 'en').produces.length, 1, 'mind is recipe 16, not a fictional exchange');
+  assert.equal(resourceRecipes('amberQuartz', 'en').produces.length, 1, 'amber is recipe 15');
+  assert.deepEqual(resourceRecipes('amberQuartz', 'en').uses, []);
+  assert.equal(resourceRecipes('amberQuartz', 'en').sealRole, 'input');
+  assert.equal(resourceRecipes('soulCore', 'en').sealRole, 'output');
+  assert.match(resourceRecipes('model', 'en').seal[0], /Seal/);
+  assert.match(detail, /recipes\.sealRole/);
   assert.ok(!/\b(description|sources|sinks|narrative):/.test(read('src/site/content/resources.ts')), 'legacy claims remain in bundled content');
 });
 
@@ -3487,7 +3525,10 @@ test('local wallet errors and pending/failed transaction responses follow the ac
 test('long translated errors and support codes wrap inside the toast viewport', () => {
   const toast = code('src/components/ui/Toast.tsx');
   const notice = code('src/components/visual/NoticeMsg.tsx');
-  assert.match(toast, /w-\[calc\(100vw-2rem\)\] max-w-lg/);
+  assert.match(toast, /createPortal\(node, document\.body\)/);
+  assert.ok(!/-translate-x-1\/2|w-\[calc\(100vw-2rem\)\]|motion\.div/.test(toast),
+    "тост снова центрируется transform и может уехать за край телефона");
+  assert.match(toast, /left-3 right-3 mx-auto max-w-lg/);
   assert.match(toast, /max-h-\[calc\(100dvh-2rem\)\] overflow-y-auto/);
   assert.match(toast, /\[overflow-wrap:anywhere\]/);
   assert.match(notice, /<span className="min-w-0 \[overflow-wrap:anywhere\]">\{n\.text\}<\/span>/);
@@ -3774,12 +3815,45 @@ test('unknown API prose and malformed success payloads never display raw server 
   assert.match(api, /error\.code = raw/);
   assert.match(api, /error\.failClosed = isFailClosedCode\(raw\)/);
   assert.match(api, /if \(data === null\)[\s\S]+NON_JSON_RESPONSE_/);
+  assert.match(api, /signalState: \(owner: string\) => get\(`\/query\/signal-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /modelState: \(owner: string\) => get\(`\/query\/model-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /gridState: \(owner: string\) => get\(`\/query\/grid-state\/\$\{owner\}`, \{ allowNull: true \}\)/);
+  assert.match(api, /if \(raw === "INSUFFICIENT_RESOURCES"\)/);
+  assert.match(api, /startSignalProcessing: \(v: any\) => post\("\/chain\/signal\/start-processing", v\)/);
+  assert.match(api, /startModelTraining: \(v: any\) => post\("\/chain\/model\/start-training", v\)/);
+  assert.ok(!/post\([\s\S]{0,80}allowNull/.test(api), 'action calls must not treat an empty body as success');
   for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
     const text = apiErrorCopy[language].unexpected(503);
     assert.ok(text.includes('503'), `${language}: missing HTTP diagnostic`);
     if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}: Russian fallback`);
     assert.ok(!/success|успешно|successful/i.test(text), `${language}: unverified result called successful`);
   }
+});
+
+test('a resource shortage names the measured resource and does not invent one', async () => {
+  const { formatResourceShortage, shortagesFromBalances } = await import('../src/lib/resourceShortageMessage.ts');
+  const { ALL_BALANCE_KEYS } = await import('../src/lib/economyBalances.ts');
+  const balances = Object.fromEntries(ALL_BALANCE_KEYS.map(key => [key, key === 'SYNAPSE' ? 1 : 40]));
+  const missing = shortagesFromBalances(balances, [
+    { resource: 'SYNAPSE', need: 6 },
+    { resource: 'SILICON', need: 1 },
+  ]);
+  assert.deepEqual(missing, [{ resource: 'SYNAPSE', have: '1', need: '6' }]);
+  assert.equal(shortagesFromBalances(null, [{ resource: 'SYNAPSE', need: 6 }]), null);
+  for (const language of ['ru', 'en', 'pt', 'es', 'vi', 'id', 'fil'] as const) {
+    const text = formatResourceShortage(language, missing);
+    assert.match(text, /1/);
+    assert.match(text, /6/);
+    assert.ok(!/SYNAPSE/.test(text), `${language}: raw key leaked`);
+    assert.ok(!/success|успешно/i.test(text), `${language}: shortage called successful`);
+    if (language !== 'ru') assert.ok(!/[А-Яа-яЁё]/.test(text), `${language}: Russian fallback`);
+  }
+  const unnamed = formatResourceShortage('en', [{ resource: 'NOT_A_RESOURCE', have: '0', need: '1' }]);
+  assert.equal(unnamed, 'Not enough resources to start. The start was not sent.');
+  const feedback = code('src/lib/txResponseFeedback.ts');
+  assert.match(feedback, /code === 'INSUFFICIENT_RESOURCES'/);
+  assert.match(code('src/pages/farm/MillPanel.tsx'), /shortagesFromBalances\(/);
+  assert.match(code('src/pages/farm/OvenPanel.tsx'), /shortagesFromBalances\(/);
 });
 
 test('unlinked admin audit has seven-language labels without weakening failed-read handling', async () => {
@@ -4053,15 +4127,7 @@ test('craft and repair catch paths retain wallet-bound checks while hiding arbit
   }
 });
 
-test('drum and market actions show structured failures in the active locale, not a guessed final status', () => {
-  const drum = code('src/components/DrumSpin.tsx');
-  assert.match(drum, /useFlash\(language\)/);
-  assert.match(drum, /flashRef\.current\(currentCopy\.revealed/);
-  assert.match(drum, /flashRef\.current\(currentCopy\.refunded/);
-  assert.match(drum, /currentLanguage === language[\s\S]+actionErrorFeedback\(error, currentLanguage, drumCopy\[currentLanguage\]\.uncertain\)/);
-  assert.equal((drum.match(/new LocalTxFeedbackError\(r\.error \|\| copy\.uncertain\)/g) || []).length, 1);
-  assert.doesNotMatch(drum, /api\.drum\.commit\(/);
-  assert.ok(!/String\(error instanceof Error|humanizeVrfError\(raw, language\)/.test(drum));
+test('market actions show structured failures in the active locale, not a guessed final status', () => {
   for (const [file, actions] of [['OfferPage', 3], ['RentalPage', 4], ['AuctionPage', 3]] as const) {
     const source = code(`src/pages/market/${file}.tsx`);
     assert.match(source, /useFlash\(language\)/);
@@ -4178,7 +4244,7 @@ test('farm toasts are tied to the locale that produced their text', () => {
   assert.match(source, /show: \(message: string, type: "success" \| "error" \| "info", language: Language\)/);
   assert.match(source, /set\(\{ message, type, visible: true, messageLanguage: language \}\)/);
   assert.match(source, /visible && messageLanguage === language/);
-  for (const [file, expected] of [['NeuralLabPanel', 9], ['MillPanel', 8], ['OvenPanel', 8]] as const) {
+  for (const [file, expected] of [['NeuralLabPanel', 10], ['MillPanel', 9], ['OvenPanel', 9]] as const) {
     const panel = code(`src/pages/farm/${file}.tsx`);
     const calls = panel.match(/toast\.show\([^\n]+?\);/g) ?? [];
     assert.equal(calls.length, expected, file);
@@ -4227,7 +4293,7 @@ test('collection labels do not claim resource mining is available; Filipino titl
   assert.equal(homeResourceNames.fil.signal, 'Senyal');
   assert.equal(pageNames.fil.craft, 'Pandayang kuwantum');
   assert.equal(pageNames.fil.lottery, 'Bunutan ng kuwantum');
-  assert.equal(gameHeaders.fil.drum, 'Tambol na kuwantum');
+  assert.equal(gameHeaders.fil.lottery, 'Loterya');
 });
 
 test('Filipino player navigation, install-adjacent labels, and instrument examples avoid English fallbacks', async () => {
@@ -4408,7 +4474,7 @@ test("реестр инструментов показывает все пять
     assert.ok(toolPlate(tool.id, rarity), `${tool.id}/${rarity}: нет картины`);
   }
   const source = read("src/lib/visualAssets.ts");
-  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.jpg/g) || []).length >= 25, true, "картины исполнений пропали");
+  assert.equal((source.match(/\/assets\/nfts\/[a-z-]+\.png/g) || []).length >= 25, true, "картины исполнений пропали");
 
   for (const language of languages) {
     const copy = catalog.toolsCatalogCopy[language];
@@ -4454,6 +4520,8 @@ test("каталог ресурсов разложен по отделам и п
   assert.match(page, /site-catalog-group__title/, "заголовок отдела пропал");
   assert.match(page, /copy\.showing\(list\.length, resources\.length\)/, "нет счётчика показанного");
   assert.match(page, /resourceRecipes\(r\.id as ResourceId, language\)/, "роли ресурса берутся из таблицы рецептов, а не из текста");
+  assert.match(page, /copy\.sealSpends/);
+  assert.match(page, /copy\.sealMints/);
   assert.match(css, /\.site-catalog-group__count \{/, "у отдела нет счётчика");
   assert.match(css, /\.site-resource__roles li \{/, "у карточки ресурса нет марок роли");
 
@@ -4528,6 +4596,37 @@ test("витрина капсул дропа: картины, описания �
     assert.ok(game.illustration.trim(), `${language}: нет подписи витрины`);
     const demo = siteChanceCopy[language].packDemo;
     assert.ok(demo.sizes.length === 3 && demo.sealed.trim() && demo.open.trim(), `${language}: иллюстрация капсулы не подписана`);
+  }
+});
+
+test("средняя и большая капсулы и крафт остаются открытыми", async () => {
+  const packs = code("src/pages/tools/PacksPage.tsx");
+  const craft = code("src/pages/tools/CraftPage.tsx");
+  const lab = code("src/pages/farm/FarmDashboard.tsx");
+  const routes = read("../aof_backend/src/routes/packs.ts");
+  const disabled = code("src/components/ui/FeatureDisabledNotice.tsx");
+  const { labLabels } = await import("../src/i18n/labLabels.ts");
+  const { craftCopy } = await import("../src/i18n/craftCopy.ts");
+  const { languages } = await import("../src/i18n/translations.ts");
+
+  assert.match(packs, /id: "medium", index: 1/);
+  assert.match(packs, /id: "big", index: 2/);
+  assert.match(packs, /api\.packs\.commit\(\{ user: address, packType: pack\.id/);
+  assert.match(routes, /const PACK_TYPES = \["small", "medium", "big"\] as const;/);
+  assert.match(lab, /headerId="capsules"/);
+  assert.match(lab, /headerId="craft"/);
+  assert.match(lab, /<PacksPage \/>/);
+  assert.match(lab, /<CraftPage \/>/);
+  assert.match(craft, /copy\.openCapsules/);
+  assert.match(craft, /headerId="capsules"/);
+  assert.doesNotMatch(disabled, /packs:|craft:/);
+  for (const language of languages) {
+    assert.ok(labLabels[language].capsules.trim());
+    assert.ok(labLabels[language].craft.trim());
+    assert.ok(craftCopy[language].openCapsules.trim());
+    if (language !== "ru") {
+      assert.ok(!/[А-Яа-яЁё]/.test(labLabels[language].capsules + labLabels[language].craft + craftCopy[language].openCapsules));
+    }
   }
 });
 

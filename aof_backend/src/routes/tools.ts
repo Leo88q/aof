@@ -19,6 +19,7 @@ import {
   vaultGuardPda,
   rentalListingPda,
   rentalAgreementPda,
+  enchantSlotPda,
   toolMetadataRegistryPda,
   tokenMetadataPda,
   TOKEN_METADATA_PROGRAM_ID,
@@ -34,6 +35,7 @@ import {
 } from "../lib/accountSizes";
 import { simulateTransaction } from "../security/txSimulator";
 import { fetchOne } from "../lib/decode";
+import { rarityHourCap } from "../lib/miningHours";
 import { miningEnabledOnChain } from "../lib/configState";
 import { miningRewardMint, TOOL_RESOURCE_MINT } from "../lib/toolResourceMint";
 import { Keypair, Transaction } from "@solana/web3.js";
@@ -43,6 +45,8 @@ import { criticalOperationGuard, requireCircuitOpen, requireWalletLimits } from 
 import { requireAdmin } from "../middleware/adminAuth";
 import { assertNoFraudHold, sendFraudHold } from "../security/fraudHold";
 import { materialMintField, validateSingleCanonicalResourceMint, type ResourceMintKey } from "../lib/resourceRegistry";
+import { atomicTokenNeeds, craftBundleUnits, craftFeeMicros, tokenNeeds } from "../lib/resourceShortage";
+import { REPAIR_CIRCUIT, REPAIR_SILICON } from "../lib/resourceShortageCore";
 
 /** flaskType (1..5) → канонический ключ ресурса флюида в `MaterialMints`. */
 const FLASK_KIND_BY_TYPE: Record<number, ResourceMintKey> = {
@@ -208,6 +212,12 @@ r.post("/craft", requireCircuitOpen, requireWalletLimits("tools_craft"), async (
     const skrMint = dataMint;
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
+    const bundle = Number.isInteger(rarityIdx) ? await craftBundleUnits(rarityIdx - 1) : null;
+    if (bundle) {
+      const fee = await craftFeeMicros();
+      const gate = await tokenNeeds(user, bundle, undefined, fee);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const ix = await (program.methods as any)
       .craft(toolType, rarity)
@@ -275,19 +285,14 @@ r.post("/repair-quote", async (req, res) => {
     const toolData: any = await fetchOne("toolData", tool);
     if (!toolData) return res.status(400).json({ error: "tool not found" });
     
-    // These values mirror Rarity::repair_*_cost_per_unit() in aof-core.
-    const siliconCosts: Record<string, number> = {
-      common: 2_000_000_000, uncommon: 4_000_000_000, rare: 9_000_000_000,
-      epic: 20_000_000_000, legendary: 45_000_000_000,
-    };
-    const circuitCosts: Record<string, number> = {
-      common: 3_000_000_000, uncommon: 6_000_000_000, rare: 14_000_000_000,
-      epic: 30_000_000_000, legendary: 70_000_000_000,
-    };
+    // Same per-unit costs as Rarity::repair_*_cost_per_unit() in aof-core.
     const rarQ = toolData.rarity;
-    const rkQ = typeof rarQ === "object" && rarQ ? Object.keys(rarQ)[0] : String(rarQ || "common");
-    const silicon = (siliconCosts[rkQ] || 0) * amount;
-    const circuit = (circuitCosts[rkQ] || 0) * amount;
+    const rkQ = typeof rarQ === "object" && rarQ ? Object.keys(rarQ)[0] : String(rarQ || "");
+    const siliconUnit = REPAIR_SILICON[rkQ];
+    const circuitUnit = REPAIR_CIRCUIT[rkQ];
+    if (!siliconUnit || !circuitUnit) return res.status(400).json({ error: "tool rarity is not a repair tier" });
+    const silicon = Number(siliconUnit) * amount;
+    const circuit = Number(circuitUnit) * amount;
 
     res.json({ silicon, circuit, amount });
   } catch (e: any) {
@@ -344,6 +349,18 @@ r.post("/repair", async (req, res) => {
     // токен. Стейк-путь берёт токен из общего vault, делегированный — из эскроу
     // листинга аренды; свободный инструмент чинит владелец со своего ATA.
     const toolData: any = await fetchOne("toolData", tool);
+    const rar = toolData?.rarity;
+    const rk = typeof rar === "object" && rar ? Object.keys(rar)[0] : String(rar || "");
+    const siliconUnit = REPAIR_SILICON[rk];
+    const circuitUnit = REPAIR_CIRCUIT[rk];
+    if (siliconUnit && circuitUnit) {
+      const units = BigInt(amount);
+      const gate = await atomicTokenNeeds(user, [
+        ["SILICON", siliconUnit * units],
+        ["CIRCUIT", circuitUnit * units],
+      ]);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
     const custody = await toolCustody(user, mint, toolData);
     const [vault] = vaultPda();
     const ownerToolAta = getAssociatedTokenAddressSync(mint, user, true);
@@ -421,7 +438,14 @@ r.post("/stake", requireCircuitOpen, requireWalletLimits("tools_stake"), async (
       })
       .instruction();
 
-    const tx = await coSign([ix], user);
+    // Stake requires an initialized vault token account. The vault PDA itself
+    // need not exist, but the first stake of a mint fails simulation with
+    // Anchor 3012 (AccountNotInitialized) unless this ATA is created here.
+    // The player pays its rent in the same transaction.
+    const createVaultAta = createAssociatedTokenAccountIdempotentInstruction(
+      user, vaultToken, vault, mint,
+    );
+    const tx = await coSign([createVaultAta, ix], user);
     res.json({ tx });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
@@ -484,12 +508,26 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
     const [vault] = vaultPda();
     const vaultToken = getAssociatedTokenAddressSync(mint, vault, true);
     const toolData: any = await fetchOne("toolData", tool);
+    const hourCap = rarityHourCap(toolData?.rarity);
+    if (hourCap !== null && hours > hourCap) {
+      return res.status(400).json({ error: "HOURS_EXCEED_RARITY_CAP", maxHours: hourCap });
+    }
+    const durability = Number(toolData?.durability);
+    if (Number.isInteger(durability) && hours > durability) {
+      return res.status(400).json({ error: "INSUFFICIENT_DURABILITY", durability });
+    }
     const custody = await toolCustody(user, mint, toolData);
     if (!custody) {
       return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
     }
+    const speedSlot = enchantSlotPda(mint, 0)[0];
+    const speedInfo = await connection.getAccountInfo(speedSlot, "confirmed");
+    const withSpeed = (builder: { remainingAccounts: (accounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[]) => { instruction: () => Promise<unknown> }; instruction: () => Promise<unknown> }) =>
+      speedInfo
+        ? builder.remainingAccounts([{ pubkey: speedSlot, isWritable: false, isSigner: false }]).instruction()
+        : builder.instruction();
     const ix = custody.kind === "delegated"
-      ? await (program.methods as any)
+      ? await withSpeed((program.methods as any)
           .startMiningDelegated(hours)
           .accounts({
             config,
@@ -501,9 +539,8 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
             rentalAgreement: custody.rentalAgreement,
             rentalVault: custody.rentalVault,
             systemProgram: SystemProgram.programId,
-          })
-          .instruction()
-      : await (program.methods as any)
+          }))
+      : await withSpeed((program.methods as any)
           .startMining(hours)
           .accounts({
             config,
@@ -516,8 +553,7 @@ r.post("/start-mining", requireCircuitOpen, requireWalletLimits("tools_start_min
             vault,
             vaultToken,
             systemProgram: SystemProgram.programId,
-          })
-          .instruction();
+          }));
 
     const tx = await coSign([ix], user);
     res.json({ tx });
@@ -567,8 +603,14 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
     if (!custody) {
       return res.status(400).json({ error: "TOOL_NOT_STAKED_AND_NOT_RENTED_BY_CALLER" });
     }
+    const durabilitySlot = enchantSlotPda(mint, 1)[0];
+    const durabilityInfo = await connection.getAccountInfo(durabilitySlot, "confirmed");
+    const withDurability = (builder: { remainingAccounts: (accounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[]) => { instruction: () => Promise<unknown> }; instruction: () => Promise<unknown> }) =>
+      durabilityInfo
+        ? builder.remainingAccounts([{ pubkey: durabilitySlot, isWritable: false, isSigner: false }]).instruction()
+        : builder.instruction();
     const ix = custody.kind === "delegated"
-      ? await (program.methods as any)
+      ? await withDurability((program.methods as any)
           .collectMiningDelegated()
           .accounts({
             config,
@@ -585,9 +627,8 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
             rentalAgreement: custody.rentalAgreement,
             rentalVault: custody.rentalVault,
             tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .instruction()
-      : await (program.methods as any)
+          }))
+      : await withDurability((program.methods as any)
           .collectMining()
           .accounts({
             config,
@@ -604,8 +645,7 @@ r.post("/collect-mining", requireCircuitOpen, requireWalletLimits("tools_collect
             vault,
             vaultToken,
             tokenProgram: TOKEN_PROGRAM_ID,
-          })
-          .instruction();
+          }));
 
     // The ATA creation and the settlement are one wallet-signed transaction.
     const createPayoutAta = createAssociatedTokenAccountIdempotentInstruction(
@@ -749,6 +789,8 @@ r.post("/use-flask", requireCircuitOpen, requireWalletLimits("tools_use_flask"),
     }
 
     const userFlask = getAssociatedTokenAddressSync(flaskMint, user);
+    const gate = await tokenNeeds(user, [[flaskKind, 1n]]);
+    if (gate.kind === "short") return res.status(400).json(gate.body);
     const ix = await (program.methods as any)
       .useFlask(flaskType)
       .accounts({

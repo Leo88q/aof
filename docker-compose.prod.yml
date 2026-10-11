@@ -195,9 +195,9 @@ services:
       timeout: 5s
       retries: 3
 
-  # [F-06] REQUIRED in production: settles every Switchboard-backed commit
+  # [F-06] REQUIRED in production: settles every slot-hash commit
   # (packs, reroll, exploration, forge, lottery, drum) within seconds and
-  # refunds the ones the oracle never revealed. It writes nothing to the DB.
+  # refunds the ones that were not revealed. It writes nothing to the DB.
   # While it is down, commits pile up and the API stops accepting new ones
   # (VRF_SETTLEMENT_DEGRADED); run a second replica for redundancy — reveals
   # are idempotent on-chain.

@@ -7,10 +7,12 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import bs58 from "bs58";
 import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } from "../lib/decode";
 import { pk } from "../lib/tx";
+import { PROGRAM_ID } from "../config";
+import { decodeLaboratoryFinale } from "../lib/laboratoryFinale";
 import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda, seasonPda, rerollConfigPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, marketConfigPda,
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, laboratoryFinalePda, marketConfigPda,
   weatherStatePda, gridStatePda, signalStatePda, modelStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
@@ -175,21 +177,23 @@ r.get("/weather-state", async (_req, res) => {
 r.get("/grid-state/:owner", async (req, res) => {
   const [addr] = gridStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("gridState", addr);
-  if (!state) return res.json(null);
-  res.json({ ...deep(state), powerBuffer: resourceDisplay(state.powerBuffer) });
+  // Нет счёта — станция не создана. Это не отказ чтения.
+  if (!state) return res.json({ exists: false });
+  res.json({ exists: true, ...deep(state), powerBuffer: resourceDisplay(state.powerBuffer) });
 });
 
 r.get("/signal-state/:owner", async (req, res) => {
   const [addr] = signalStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("signalState", addr);
-  if (!state) return res.json(null);
+  // Нет счёта — процесс не начат. Это не отказ чтения и не выдуманный выход.
+  if (!state) return res.json({ inProgress: false });
   res.json({ ...deep(state), outputSignal: resourceDisplay(state.outputSignal) });
 });
 
 r.get("/model-state/:owner", async (req, res) => {
   const [addr] = modelStatePda(new PublicKey(req.params.owner));
   const state: any = await fetchOne("modelState", addr);
-  if (!state) return res.json(null);
+  if (!state) return res.json({ inProgress: false });
   res.json({ ...deep(state), outputModel: resourceDisplay(state.outputModel) });
 });
 
@@ -670,6 +674,49 @@ r.get("/material-mints", async (_req, res) => {
     });
   } catch (e: any) {
     res.status(503).json({ error: "RESOURCE_MINT_REGISTRY_UNAVAILABLE_FROM_CANONICAL_CHAIN" });
+  }
+});
+
+// Cores in circulation. Admin mint can also create them, so this is not a
+// claim that supply equals player seal counters. Unreadable is not zero.
+r.get("/soul-core-supply", async (_req, res) => {
+  try {
+    const [address] = materialMintsPda();
+    const materials: any = await fetchOne("materialMints", address);
+    const raw = materials?.soulCore ?? materials?.soul_core;
+    if (!raw) return res.status(503).json({ error: "SOUL_CORE_MINT_UNAVAILABLE" });
+    const mint = new PublicKey(raw);
+    const supply = await connection.getTokenSupply(mint, "confirmed");
+    if (supply.value.decimals !== 9) return res.status(503).json({ error: "SOUL_CORE_DECIMALS_UNEXPECTED" });
+    const atoms = BigInt(supply.value.amount);
+    const whole = atoms / 1_000_000_000n;
+    if (whole > BigInt(Number.MAX_SAFE_INTEGER)) return res.status(503).json({ error: "SOUL_CORE_SUPPLY_UNREADABLE" });
+    return res.json({ cores: Number(whole), mint: mint.toBase58(), amount: supply.value.amount });
+  } catch {
+    return res.status(503).json({ error: "SOUL_CORE_SUPPLY_UNREADABLE" });
+  }
+});
+
+// Счётчик печатей. Отсутствующий счёт — честный ноль. Чужой или битый счёт — не ноль.
+r.get("/laboratory-finale/:owner", async (req, res) => {
+  let owner: PublicKey;
+  try {
+    owner = new PublicKey(req.params.owner);
+  } catch {
+    return res.status(400).json({ error: "INVALID_PLAYER_ADDRESS" });
+  }
+  const [address] = laboratoryFinalePda(owner);
+  try {
+    const info = await connection.getAccountInfo(address, "confirmed");
+    if (!info) return res.json({ exists: false, seals: 0, address: address.toBase58() });
+    if (!info.owner.equals(PROGRAM_ID)) {
+      return res.status(503).json({ error: "LABORATORY_FINALE_ACCOUNT_OWNER_MISMATCH" });
+    }
+    const decoded = decodeLaboratoryFinale(info.data, owner.toBytes());
+    if (!decoded.ok) return res.status(503).json({ error: decoded.error });
+    return res.json({ exists: decoded.exists, seals: decoded.seals, address: address.toBase58() });
+  } catch {
+    return res.status(503).json({ error: "LABORATORY_FINALE_READ_FAILED" });
   }
 });
 

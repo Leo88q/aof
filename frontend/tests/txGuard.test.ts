@@ -18,7 +18,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction,
   createAssociatedTokenAccountInstruction, createInitializeMint2Instruction, createInitializeMintInstruction, getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
+import { GAME_OPERATOR, guardTransaction, getAofGuardConfig } from "../src/lib/txGuard";
 
 const user = Keypair.generate();
 const other = Keypair.generate().publicKey;
@@ -96,6 +96,35 @@ test("compute budget: unit limit in (0, 1.4M] and price ≤ 100k microlamports, 
   await bad(cb([3, 0x10, 0x27, 0, 0]));               // price with a u32 body
   await bad(cb([2, 0x40, 0x42, 0x0f]));                // truncated
   await bad(cb([]));
+});
+
+test("player nonce advance is allowed only first, and only the exact rent may return to the operator", async () => {
+  const nonce = Keypair.generate().publicKey;
+  const operator = new PublicKey(GAME_OPERATOR);
+  const rent = 1_447_680;
+  const advance = SystemProgram.nonceAdvance({ noncePubkey: nonce, authorizedPubkey: user.publicKey });
+  const repay = SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: operator, lamports: rent });
+  const rpc = rpcWith();
+  rpc.getMinimumBalanceForRentExemption = async (size: number) => size === 80 ? rent : 0;
+  const paid = await guard(transaction(advance, ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }), repay, coreIx()), {}, rpc);
+  assert.equal(paid.safe, true);
+  assert.equal(paid.details?.lamportsSpent, 0);
+  assert.equal((await guard(transaction(coreIx(), advance), {}, rpc)).safe, false, "advance must be first");
+  assert.equal((await guard(transaction(SystemProgram.nonceWithdraw({
+    noncePubkey: nonce, authorizedPubkey: user.publicKey, toPubkey: user.publicKey, lamports: 1,
+  })), {}, rpc)).safe, false, "withdraw is not an advance");
+  const extra = await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: operator, lamports: rent + 1,
+  }), coreIx()), {}, rpc);
+  assert.equal(extra.safe, false, "rent refund must be the exact exemption");
+  assert.equal((await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: other, lamports: rent,
+  })), {}, rpc)).safe, false, "rent must return only to the operator");
+  const small = await guard(transaction(advance, SystemProgram.transfer({
+    fromPubkey: user.publicKey, toPubkey: operator, lamports: 1,
+  }), coreIx()), {}, rpc);
+  assert.equal(small.safe, false, "a smaller operator transfer is not the nonce rent");
+  assert.match(small.cause || "", /Unexpected operator transfer/);
 });
 
 test("prep-mint policy: one user-funded classic mint uses auth PDA temporarily for mint/freeze, rent ceiling inclusive", async () => {
@@ -268,6 +297,62 @@ test('lottery claim/refund intents bind wallet, round, ticket and exact instruct
   }
 });
 
+
+test("lottery purchase accepts the durable nonce prelude and still rejects another payment", async () => {
+  const { CORE_INSTRUCTIONS } = await import("../src/lib/coreInstructions");
+  const spec = CORE_INSTRUCTIONS.find((entry) => entry.name === "buy_lottery_ticket");
+  assert.ok(spec);
+  const roundId = "1";
+  const ticket = "0";
+  const u64 = (value: bigint) => {
+    const out = Buffer.alloc(8);
+    out.writeBigUInt64LE(value);
+    return out;
+  };
+  const roundBytes = u64(1n);
+  const ticketBytes = u64(0n);
+  const round = PublicKey.findProgramAddressSync([Buffer.from("lottery_round"), roundBytes], core)[0];
+  const ticketPda = PublicKey.findProgramAddressSync([Buffer.from("lottery_ticket"), roundBytes, ticketBytes], core)[0];
+  const counter = PublicKey.findProgramAddressSync([
+    Buffer.from("lottery_ticket"), Buffer.from("count"), roundBytes, user.publicKey.toBuffer(),
+  ], core)[0];
+  const config = PublicKey.findProgramAddressSync([Buffer.from("config")], core)[0];
+  const data = Buffer.alloc(16);
+  Buffer.from(spec.discriminator).copy(data, 0);
+  data.writeBigUInt64LE(800_000n, 8);
+  const buy = new TransactionInstruction({
+    programId: core,
+    data,
+    keys: [
+      { pubkey: config, isSigner: false, isWritable: false },
+      { pubkey: user.publicKey, isSigner: true, isWritable: true },
+      { pubkey: round, isSigner: false, isWritable: true },
+      { pubkey: ticketPda, isSigner: false, isWritable: true },
+      { pubkey: counter, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+  });
+  const intent = {
+    kind: "lotteryTicket" as const, action: "buy" as const, user: user.publicKey.toBase58(),
+    roundId, ticketNumber: ticket, maxPriceLamports: "800000",
+  };
+  const nonce = Keypair.generate().publicKey;
+  const rent = 1_447_680;
+  const advance = SystemProgram.nonceAdvance({ noncePubkey: nonce, authorizedPubkey: user.publicKey });
+  const repay = SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: new PublicKey(GAME_OPERATOR), lamports: rent });
+  const rpc = rpcWith();
+  rpc.getMinimumBalanceForRentExemption = async (size: number) => size === 80 ? rent : 0;
+  const tx = transaction(
+    advance,
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1 }),
+    repay,
+    buy,
+  );
+  assert.equal((await guard(tx, { intent }, rpc)).safe, true);
+  const drain = transaction(advance, repay, buy, SystemProgram.transfer({ fromPubkey: user.publicKey, toPubkey: other, lamports: 1 }));
+  assert.equal((await guard(drain, { intent }, rpc)).safe, false);
+});
 
 test('season XP claim: bound campaign/genesis digests, exact on-chain arguments/accounts, live cluster and expiry', async () => {
   const { CORE_INSTRUCTIONS } = await import('../src/lib/coreInstructions');

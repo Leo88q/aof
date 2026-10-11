@@ -187,22 +187,3 @@ export function PackOpener() {
     </div>
   );
 }
-
-export function DrumInteract() {
-  const { language } = useLocale();
-  const copy = siteChanceCopy[language].drumDemo;
-  const [result, setResult] = useState<number | null>(null);
-  const strike = () => {
-    setResult(Math.floor(Math.random() * copy.rhythms.length));
-    window.dispatchEvent(new CustomEvent('aof:badge', { detail: 'drum' }));
-  };
-  return (
-    <div className="site-paper site-ritual min-w-0 [overflow-wrap:anywhere]">
-      <p className="site-demo-label">{copy.label}</p>
-      <h3>{copy.heading}</h3>
-      <p>{copy.hint}</p>
-      <div className="site-actions"><Button onClick={strike}>{copy.strike}</Button></div>
-      <p role="status">{result === null ? copy.idle : copy.rhythms[result]}</p>
-    </div>
-  );
-}

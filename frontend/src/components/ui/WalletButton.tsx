@@ -9,6 +9,16 @@ import { useWalletStore } from '../../store/walletStore';
 import { useStore } from '../../store/useStore';
 import { hasWalletSupport, isMobileBrowser, phantomBrowseLink } from '../../lib/wallet';
 
+const WALLET_ACK_KEY = "nf:wallet-ack:v1";
+
+function walletAcknowledged(): boolean {
+  try { return localStorage.getItem(WALLET_ACK_KEY) === "1"; } catch { return false; }
+}
+
+function rememberWalletAck() {
+  try { localStorage.setItem(WALLET_ACK_KEY, "1"); } catch { /* the choice still applies to this click */ }
+}
+
 export function WalletButton() {
   const { language } = useLocale();
   const copy = walletCopy[language];
@@ -34,7 +44,7 @@ export function WalletButton() {
 
   return <div lang={language} className="flex flex-col items-end gap-1 min-w-0 max-w-full [overflow-wrap:anywhere]">
     <motion.button type="button" disabled={connecting} aria-label={connected ? `${copy.disconnect}: ${walletName} ${shortAddr}` : copy.connect}
-      onClick={() => (connected ? void handleClick() : setShowNotice(true))}
+      onClick={() => (connected || walletAcknowledged() ? void handleClick() : setShowNotice(true))}
       whileTap={{ scale: 0.95 }}
       className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors max-w-full ${
         connected ? 'bg-sprout-600 text-white' : 'bg-accent-600 text-soil-950'}`}
@@ -49,7 +59,7 @@ export function WalletButton() {
     {failed && <p role="alert" className="text-xs text-ember-400 text-right">{copy.failed}</p>}
     {showNotice && !connected && <WalletSafetyNotice
       onCancel={() => setShowNotice(false)}
-      onContinue={() => { setShowNotice(false); void handleClick(); }}
+      onContinue={() => { rememberWalletAck(); setShowNotice(false); void handleClick(); }}
     />}
     {offerPhantom && <a href={phantomBrowseLink()} className="text-[11px] leading-tight text-accent-500 underline underline-offset-2">
       {copy.phantom}

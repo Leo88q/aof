@@ -7,14 +7,16 @@ import { authPda, configPda, explorationCommitPda, explorationStatePda, material
 import { coSign, pk } from "../lib/tx";
 import { coSignWithVrfLookupTable } from "../lib/vrfLookupTableTransactions";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { EXPLORATION_UPGRADE_COST, TRIP_COST } from "../lib/resourceShortageCore";
 
 const r = Router();
 
 /**
  * [F-06] Start an exploration trip: the trip cost is burned, the tier is
- * snapshotted and a Switchboard commit locks a pool slot (operator co-signs as
+ * snapshotted and the same commit pack opening uses locks a pool slot (operator co-signs as
  * the backend gate). The vrf-settler reveals it; POST /reveal lets the player
  * do it (or refund after the window) without the backend.
  */
@@ -29,7 +31,19 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
     const ata = (mint: PublicKey) => getAssociatedTokenAddressSync(mint, user);
     const [explorationCommit] = explorationCommitPda(toolMint);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
+    const tripGate = await tokenNeeds(user, [
+      ["DATA", TRIP_COST.DATA],
+      ["CIRCUIT", TRIP_COST.CIRCUIT],
+      ["SILICON", TRIP_COST.SILICON],
+      ["DATASET", TRIP_COST.DATASET],
+    ]);
+    if (tripGate.kind === "short") {
+      releasePoolSlot(slot);
+      return res.status(400).json(tripGate.body);
+    }
 
     const ix = await (program.methods as any)
       .startExplorationCommit()
@@ -62,8 +76,37 @@ r.post("/start/commit", requireCircuitOpen, requireWalletLimits("exploration_com
       .instruction();
     const tx = await coSignWithVrfLookupTable([ix], user);
     res.json({ tx, explorationCommit: explorationCommit.toBase58() });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
+  }
+});
+
+/** Read-only tier record. A missing account is not reported as tier 1. */
+r.get("/state/:user", async (req, res) => {
+  try {
+    const user = pk(req.params.user);
+    const state: any = await (program.account as any).explorationState.fetchNullable(explorationStatePda(user)[0]);
+    if (!state) {
+      res.json({ state: null });
+      return;
+    }
+    const tier = Number(state.tier);
+    const lastTripAt = Number(state.lastTripAt);
+    const tripsToday = Number(state.tripsToday);
+    const dayStart = Number(state.dayStart);
+    if (!Number.isInteger(tier) || tier < 1 || tier > 10 ||
+        !Number.isSafeInteger(lastTripAt) || !Number.isSafeInteger(dayStart) ||
+        !Number.isInteger(tripsToday) || tripsToday < 0) {
+      res.status(503).json({ error: "EXPLORATION_STATE_UNAVAILABLE" });
+      return;
+    }
+    res.json({ state: { tier, lastTripAt, tripsToday, dayStart } });
+  } catch {
+    res.status(503).json({ error: "EXPLORATION_STATE_UNAVAILABLE" });
   }
 });
 
@@ -98,6 +141,17 @@ r.post("/upgrade-tier", async (req, res) => {
     const userCircuit = getAssociatedTokenAddressSync(circuitMint, user);
     const userSilicon = getAssociatedTokenAddressSync(siliconMint, user);
     const userData = getAssociatedTokenAddressSync(dataMint, user);
+    try {
+      const state: any = await (program.account as any).explorationState.fetchNullable(explorationState);
+      const tier = Number(state?.tier);
+      const upgradeCost = Number.isInteger(tier) ? EXPLORATION_UPGRADE_COST[tier - 1] : undefined;
+      if (state && tier >= 1 && tier < 10 && upgradeCost) {
+        const upgradeGate = await tokenNeeds(user, [["CIRCUIT", upgradeCost], ["SILICON", upgradeCost], ["DATA", upgradeCost]]);
+        if (upgradeGate.kind === "short") return res.status(400).json(upgradeGate.body);
+      }
+    } catch {
+      // An unreadable tier is not proof the player is short.
+    }
 
     const ix = await (program.methods as any)
       .upgradeExplorationTier()

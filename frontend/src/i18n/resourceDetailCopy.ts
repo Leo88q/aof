@@ -1,11 +1,11 @@
 import type { Language } from './translations';
 import type { ResourceId } from './homeDetail';
 import { homeResourceNames } from './homeDetail';
-import { WORKSHOP_RECIPES } from '../lib/workshopRecipes';
+import { LABORATORY_SEAL, WORKSHOP_RECIPES } from '../lib/workshopRecipes';
 
 type Copy = {
   produces: string; uses: string; noRecipe: string; caution: string;
-  related: string; catalog: string; recipe: string; otherSources: string;
+  related: string; catalog: string; recipe: string; seal: string; otherSources: string;
 };
 
 /** Editorial guide, not an inventory, market offer or wallet quote. */
@@ -15,49 +15,56 @@ export const resourceDetailCopy: Record<Language, Copy> = {
     noRecipe: 'В проверенной таблице рецептов связей нет.',
     caution: 'Карточка описывает ресурс, а не ваш баланс. Доступность, цены и результаты проверяйте в игре, сети и кошельке перед подписью.',
     related: 'Связанные разделы', catalog: 'Весь каталог', recipe: 'Рецепт',
-    otherSources: 'Здесь перечислены только связи из таблицы рецептов программы. Добыча, награды, торговля и применение вне рецептов не подтверждаются этой карточкой.',
+    seal: 'Печать',
+    otherSources: 'Карточка показывает таблицу рецептов и печать лаборатории. Добыча, цены и ваш баланс здесь не подтверждаются.',
   },
   en: {
     produces: 'Recipes that produce this resource', uses: 'Recipes that consume this resource',
     noRecipe: 'No connection in the verified recipe table.',
     caution: 'This card describes a resource, not your balance. Check availability, prices and outcomes in the game, network and wallet before signing.',
     related: 'Related guides', catalog: 'Full catalog', recipe: 'Recipe',
-    otherSources: 'Only connections in the program’s recipe table are shown. This card does not confirm mining, rewards, trading or uses outside those recipes.',
+    seal: 'Seal',
+    otherSources: 'This card shows the recipe table and the laboratory seal. It does not confirm mining, prices or your balance.',
   },
   pt: {
     produces: 'Receitas que criam este recurso', uses: 'Receitas que consomem este recurso',
     noRecipe: 'Sem ligação na tabela verificada de receitas.',
     caution: 'Esta ficha descreve um recurso, não o seu saldo. Confira disponibilidade, preços e resultados no jogo, na rede e na carteira antes de assinar.',
     related: 'Guias relacionados', catalog: 'Catálogo completo', recipe: 'Receita',
-    otherSources: 'Apenas as ligações da tabela de receitas do programa aparecem aqui. Esta ficha não confirma mineração, recompensas, negociação ou usos fora dessas receitas.',
+    seal: 'Selo',
+    otherSources: 'Esta ficha mostra a tabela de receitas e o selo do laboratório. Não confirma mineração, preços nem o seu saldo.',
   },
   es: {
     produces: 'Recetas que crean este recurso', uses: 'Recetas que consumen este recurso',
     noRecipe: 'Sin vínculo en la tabla de recetas verificada.',
     caution: 'Esta ficha describe un recurso, no tu saldo. Comprueba disponibilidad, precios y resultados en el juego, la red y la cartera antes de firmar.',
     related: 'Guías relacionadas', catalog: 'Catálogo completo', recipe: 'Receta',
-    otherSources: 'Solo se muestran vínculos de la tabla de recetas del programa. Esta ficha no confirma minería, recompensas, comercio ni usos fuera de esas recetas.',
+    seal: 'Sello',
+    otherSources: 'Esta ficha muestra la tabla de recetas y el sello del laboratorio. No confirma minería, precios ni tu saldo.',
   },
   vi: {
     produces: 'Công thức tạo ra tài nguyên này', uses: 'Công thức dùng tài nguyên này',
     noRecipe: 'Không có liên kết trong bảng công thức đã kiểm chứng.',
     caution: 'Thẻ này mô tả tài nguyên, không phải số dư của bạn. Hãy kiểm tra tính khả dụng, giá và kết quả trong trò chơi, trên mạng và ví trước khi ký.',
     related: 'Hướng dẫn liên quan', catalog: 'Toàn bộ danh mục', recipe: 'Công thức',
-    otherSources: 'Chỉ hiển thị liên kết trong bảng công thức của chương trình. Thẻ này không xác nhận việc khai thác, phần thưởng, giao dịch hay cách dùng ngoài các công thức đó.',
+    seal: 'Niêm phong',
+    otherSources: 'Thẻ này hiện bảng công thức và niêm phong phòng thí nghiệm. Nó không xác nhận việc khai thác, giá hay số dư của bạn.',
   },
   id: {
     produces: 'Resep yang menghasilkan sumber daya ini', uses: 'Resep yang memakai sumber daya ini',
     noRecipe: 'Tidak ada hubungan dalam tabel resep terverifikasi.',
     caution: 'Kartu ini menjelaskan sumber daya, bukan saldomu. Periksa ketersediaan, harga, dan hasil di game, jaringan, dan dompet sebelum menandatangani.',
     related: 'Panduan terkait', catalog: 'Seluruh katalog', recipe: 'Resep',
-    otherSources: 'Hanya hubungan dalam tabel resep program yang ditampilkan. Kartu ini tidak mengonfirmasi penambangan, hadiah, perdagangan, atau penggunaan di luar resep tersebut.',
+    seal: 'Segel',
+    otherSources: 'Kartu ini menampilkan tabel resep dan segel laboratorium. Kartu ini tidak mengonfirmasi penambangan, harga, atau saldomu.',
   },
   fil: {
     produces: 'Mga resipeng lumilikha ng yamang ito', uses: 'Mga resipeng gumagamit ng yamang ito',
     noRecipe: 'Walang ugnayan sa napatunayang talaan ng mga resipe.',
     caution: 'Inilalarawan ng kard na ito ang yaman, hindi ang balanse mo. Suriin ang availability, presyo at resulta sa laro, network at wallet bago pumirma.',
     related: 'Kaugnay na gabay', catalog: 'Buong katalogo', recipe: 'Resipe',
-    otherSources: 'Mga ugnayan lang mula sa talaan ng resipe ng programa ang ipinapakita. Hindi kinukumpirma ng kard na ito ang pagmimina, gantimpala, kalakalan o gamit sa labas ng mga resipeng iyon.',
+    seal: 'Tatak',
+    otherSources: 'Ipinapakita ng kard na ito ang talaan ng resipe at ang tatak ng laboratoryo. Hindi nito kinukumpirma ang pagmimina, presyo, o balanse mo.',
   },
 };
 
@@ -72,8 +79,13 @@ export function resourceRecipes(id: ResourceId, language: Language) {
   };
   const line = (recipe: typeof WORKSHOP_RECIPES[number]) =>
     `${resourceDetailCopy[language].recipe} ${recipe.id}: ${recipe.inputs.map(name).join(' + ')} → ${name(recipe.output)}`;
+  const sealLine = `${resourceDetailCopy[language].seal}: ${LABORATORY_SEAL.inputs.map(name).join(' + ')} → ${name(LABORATORY_SEAL.output)}`;
+  const sealRole = LABORATORY_SEAL.output.key === key ? 'output'
+    : LABORATORY_SEAL.inputs.some(input => input.key === key) ? 'input' : null;
   return {
     produces: WORKSHOP_RECIPES.filter(recipe => recipe.output.key === key).map(line),
     uses: WORKSHOP_RECIPES.filter(recipe => recipe.inputs.some(input => input.key === key)).map(line),
+    seal: sealRole ? [sealLine] : [],
+    sealRole,
   };
 }

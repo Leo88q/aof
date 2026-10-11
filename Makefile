@@ -16,7 +16,8 @@ build: ensure-env
 no-idl: build
 
 test: ensure-env
-	anchor test --skip-build
+	@echo "anchor test через scripts/anchor-test.sh: двойник оракула не собирается и не возвращается в genesis"
+	bash scripts/anchor-test.sh
 
 test-mocha: ensure-env
 	npx tsx node_modules/mocha/bin/mocha.js -t 1000000 tests/aof_core.ts

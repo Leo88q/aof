@@ -45,8 +45,6 @@ thread_local! {
     static LAST_CPI_DATA: std::cell::RefCell<Vec<u8>> = std::cell::RefCell::new(Vec::new());
     /// Every CPI of the current test: (program, metas, data, signer seed sets).
     static CPI_LOG: std::cell::RefCell<Vec<RecordedCpi>> = std::cell::RefCell::new(Vec::new());
-    /// Switchboard emulation mode (see `emulate_switchboard`).
-    static SB_MODE: Cell<u8> = Cell::new(SB_HONEST);
 }
 
 #[derive(Clone, Debug)]
@@ -55,54 +53,6 @@ struct RecordedCpi {
     accounts: Vec<anchor_lang::solana_program::instruction::AccountMeta>,
     data: Vec<u8>,
     signer_seeds: Vec<Vec<Vec<u8>>>,
-}
-
-/// Switchboard behaves as documented.
-const SB_HONEST: u8 = 0;
-/// `randomness_commit` "succeeds" but leaves the old seed in place.
-const SB_STALE_COMMIT: u8 = 1;
-/// `randomness_reveal` writes a value other than the one it was given.
-const SB_SWAPPED_VALUE: u8 = 2;
-
-/// What the real Switchboard program does to the randomness account, for the
-/// three instructions this program CPIs. Keeps handler tests honest end to end:
-/// the handler must read the seed and the value back from the account.
-fn emulate_switchboard(ix: &Instruction, infos: &[AccountInfo]) {
-    use crate::vrf::*;
-    let Some(first) = ix.accounts.first() else { return };
-    let Some(acc) = infos.iter().find(|i| *i.key == first.pubkey) else { return };
-    let mut data = acc.try_borrow_mut_data().unwrap();
-    if data.len() < RANDOMNESS_ACCOUNT_LEN || ix.data.len() < 8 {
-        return;
-    }
-    let mode = SB_MODE.with(|m| m.get());
-    let disc = &ix.data[..8];
-    if disc == RANDOMNESS_COMMIT_IX_DISCRIMINATOR {
-        if mode != SB_STALE_COMMIT {
-            data[104..112].copy_from_slice(&(SLOT_NOW - 1).to_le_bytes());
-            // The oracle chosen at commit is recorded on the account.
-            data[112..144].copy_from_slice(ix.accounts[2].pubkey.as_ref());
-            // Measured on devnet: a (re)commit, also over an unrevealed commit,
-            // resets reveal_slot and value.
-            data[144..184].fill(0);
-        }
-    } else if disc == RANDOMNESS_REVEAL_IX_DISCRIMINATOR {
-        data[144..152].copy_from_slice(&SLOT_NOW.to_le_bytes());
-        let mut value = [0u8; 32];
-        value.copy_from_slice(&ix.data[73..105]);
-        if mode == SB_SWAPPED_VALUE {
-            value[0] ^= 0xff;
-        }
-        data[152..184].copy_from_slice(&value);
-        // Measured on devnet: the real program zeroes the oracle field when it
-        // records a reveal, so no check may read the oracle after this CPI
-        // (the reveal contexts bind it before, via `assigned_oracle_is`).
-        data[112..144].fill(0);
-    } else if disc == RANDOMNESS_INIT_IX_DISCRIMINATOR {
-        data[..8].copy_from_slice(&RANDOMNESS_ACCOUNT_DISCRIMINATOR);
-        data[8..40].copy_from_slice(ix.accounts[2].pubkey.as_ref());
-        data[40..72].copy_from_slice(ix.accounts[3].pubkey.as_ref());
-    }
 }
 
 struct HostRuntime;
@@ -146,9 +96,7 @@ impl SyscallStubs for HostRuntime {
                     .collect(),
             })
         });
-        if instruction.program_id == crate::vrf::SWITCHBOARD_PROGRAM_ID {
-            emulate_switchboard(instruction, account_infos);
-        }
+        let _ = (instruction, account_infos, signers_seeds);
         Ok(())
     }
 }
@@ -163,15 +111,10 @@ fn runtime() {
     CPI_CALLS.with(|calls| calls.set(0));
     LAST_CPI_DATA.with(|data| data.borrow_mut().clear());
     CPI_LOG.with(|log| log.borrow_mut().clear());
-    SB_MODE.with(|m| m.set(SB_HONEST));
 }
 
 fn cpi_log() -> Vec<RecordedCpi> {
     CPI_LOG.with(|log| log.borrow().clone())
-}
-
-fn switchboard_cpis() -> Vec<RecordedCpi> {
-    cpi_log().into_iter().filter(|c| c.program_id == crate::vrf::SWITCHBOARD_PROGRAM_ID).collect()
 }
 
 fn cpi_calls() -> usize {
@@ -1826,7 +1769,7 @@ fn auction_cancel_works_only_without_bids() {
     assert!(!accounts.auction.active);
 }
 
-/// F-H: the platform keeps >= 5% of every rental (legacy 100% splits
+/// F-H: the treasury keeps >= RENTAL_FEE_BPS of every rental (legacy 100% splits
 /// included) and an early revocation refunds the unused part pro rata.
 #[test]
 fn rental_fee_split_keeps_the_platform_share_and_refunds_pro_rata() {
@@ -1947,7 +1890,7 @@ fn only_escrowed_tools_can_be_rented_within_the_signed_fee() {
     let (ok, cpis, rented) = start(total);
     assert!(ok.is_ok(), "{ok:?}");
     assert_eq!((cpis, rented), (2, true), "owner share + platform share, operator = renter");
-    assert_eq!(last_system_transfer_lamports(), total * RENTAL_FEE_BPS as u64 / 10_000, "platform keeps 5%");
+    assert_eq!(last_system_transfer_lamports(), total * RENTAL_FEE_BPS as u64 / 10_000, "treasury keeps the rental floor");
 }
 
 /// F-H: a listing can be withdrawn when it is not rented out; the escrowed NFT
@@ -2069,561 +2012,67 @@ fn order_matching_requires_the_buyers_canonical_ata() {
     validate::<MatchResourceOrders>(infos(ata(&buyer, &mint)), &[]).unwrap();
 }
 
-// ---------------------------------------------------------------- VRF (#36/#37, F-06)
+// ---------------------------------------------------------------- VRF (four future slot hashes)
 
-use crate::vrf::{
-    self as vrfmod, derive_roll, load_randomness, parse_randomness, Randomness, VrfRevealParams,
-    RANDOMNESS_ACCOUNT_DISCRIMINATOR, RANDOMNESS_ACCOUNT_LEN, RANDOMNESS_COMMIT_IX_DISCRIMINATOR,
-    RANDOMNESS_INIT_IX_DISCRIMINATOR, RANDOMNESS_REVEAL_IX_DISCRIMINATOR, SWITCHBOARD_PROGRAM_ID, SWITCHBOARD_QUEUE,
-};
+use crate::vrf::{self, derive_roll, parse_slot_hash, SEED_OFFSETS, SLOT_HASH_DELAY, SLOT_HASH_RETENTION};
 
-const SB_ACCOUNT_SPACE: usize = 480;
-
-/// Oracle every fixture randomness account is assigned to.
-const ORACLE: Pubkey = Pubkey::new_from_array([0xab; 32]);
-
-fn randomness_bytes(authority: Pubkey, queue: Pubkey, seed_slot: u64, reveal_slot: u64, value: [u8; 32]) -> Vec<u8> {
-    let mut data = vec![0u8; SB_ACCOUNT_SPACE];
-    data[..8].copy_from_slice(&RANDOMNESS_ACCOUNT_DISCRIMINATOR);
-    data[8..40].copy_from_slice(authority.as_ref());
-    data[40..72].copy_from_slice(queue.as_ref());
-    data[104..112].copy_from_slice(&seed_slot.to_le_bytes());
-    data[112..144].copy_from_slice(ORACLE.as_ref());
-    data[144..152].copy_from_slice(&reveal_slot.to_le_bytes());
-    data[152..184].copy_from_slice(&value);
+fn slot_hash_sysvar(entries: &[(u64, [u8; 32])]) -> Vec<u8> {
+    let mut data = (entries.len() as u64).to_le_bytes().to_vec();
+    for (slot, hash) in entries {
+        data.extend_from_slice(&slot.to_le_bytes());
+        data.extend_from_slice(hash);
+    }
     data
 }
 
-fn vrf_authority_key() -> Pubkey {
-    pda(&[VRF_AUTHORITY_SEED]).0
-}
-
-/// A pool randomness account as `vrf_pool_add` leaves it (plus a previous round).
-fn pool_randomness(key: Pubkey, seed_slot: u64, reveal_slot: u64) -> AccountInfo<'static> {
-    info(
-        key,
-        false,
-        rent_exempt(SB_ACCOUNT_SPACE),
-        randomness_bytes(vrf_authority_key(), SWITCHBOARD_QUEUE, seed_slot, reveal_slot, [0; 32]),
-        SWITCHBOARD_PROGRAM_ID,
-        false,
-    )
-}
-
-fn vrf_slot_state(randomness: Pubkey, lock: Pubkey) -> (Pubkey, VrfSlot) {
-    let (key, bump) = pda(&[VRF_SLOT_SEED, randomness.as_ref()]);
-    (key, VrfSlot { randomness, index: 0, lock, locked_at_slot: 0, retired: false, commits: 0, reveals: 0, bump })
-}
-
-fn sb_program() -> AccountInfo<'static> {
-    executable_program(SWITCHBOARD_PROGRAM_ID)
-}
-
-fn plain(key: Pubkey) -> AccountInfo<'static> {
-    info(key, false, 1, Vec::new(), Pubkey::new_unique(), false)
-}
-
-fn params_with(value: [u8; 32]) -> VrfRevealParams {
-    VrfRevealParams { signature: [7u8; 64], recovery_id: 1, value }
-}
-
-/// Layout, owner and discriminator checks of the Switchboard account.
 #[test]
-fn switchboard_randomness_accounts_are_verified_before_use() {
-    let value = [7u8; 32];
-    let authority = Pubkey::new_unique();
-    let parsed = parse_randomness(&randomness_bytes(authority, SWITCHBOARD_QUEUE, 100, 101, value)).ok();
-    assert_eq!(parsed.map(|r| (r.authority, r.queue, r.seed_slot, r.reveal_slot, r.value)),
-        Some((authority, SWITCHBOARD_QUEUE, 100, 101, value)));
-    let mut wrong_disc = randomness_bytes(authority, SWITCHBOARD_QUEUE, 100, 101, value);
-    wrong_disc[0] ^= 1;
-    assert!(parse_randomness(&wrong_disc).is_err());
-    assert!(parse_randomness(&randomness_bytes(authority, SWITCHBOARD_QUEUE, 100, 101, value)[..RANDOMNESS_ACCOUNT_LEN - 1]).is_err(), "short data");
-    // The legacy 408-byte layout still parses (the prefix is shared).
-    assert!(parse_randomness(&randomness_bytes(authority, SWITCHBOARD_QUEUE, 1, 2, value)[..RANDOMNESS_ACCOUNT_LEN]).is_ok());
-
-    let key = Pubkey::new_unique();
-    let genuine = info(key, false, 1, randomness_bytes(authority, SWITCHBOARD_QUEUE, 5, 0, value), SWITCHBOARD_PROGRAM_ID, false);
-    assert_eq!(load_randomness(&genuine).ok().map(|r: Randomness| r.seed_slot), Some(5));
-    let forged = info(key, false, 1, randomness_bytes(authority, SWITCHBOARD_QUEUE, 5, 0, value), Pubkey::new_unique(), false);
-    assert!(load_randomness(&forged).is_err(), "same bytes, wrong owner");
+fn slot_hash_parser_returns_only_the_requested_slot() {
+    let want = [7u8; 32];
+    let data = slot_hash_sysvar(&[(40, [1u8; 32]), (32, want), (8, [2u8; 32])]);
+    assert_eq!(parse_slot_hash(&data, 32), Some(want));
+    assert_eq!(parse_slot_hash(&data, 41), None);
+    assert_eq!(parse_slot_hash(&data[..7], 32), None, "truncated header");
 }
 
-/// The three Switchboard CPIs are byte-for-byte the published sb_on_demand
-/// interface: program, account order, signer/writable flags, data layout.
 #[test]
-fn switchboard_cpi_encoding_matches_the_pinned_idl() {
-    let [r, q, o, a, p, st, esc, ps, ls, lut] = [(); 10].map(|_| Pubkey::new_unique());
-    let flags = |ix: &Instruction| ix.accounts.iter().map(|m| (m.pubkey, m.is_signer, m.is_writable)).collect::<Vec<_>>();
-
-    let commit = vrfmod::commit_instruction(r, q, o, a);
-    assert_eq!(commit.program_id, SWITCHBOARD_PROGRAM_ID);
-    assert_eq!(commit.data, RANDOMNESS_COMMIT_IX_DISCRIMINATOR.to_vec(), "empty RandomnessCommitParams");
-    assert_eq!(flags(&commit), vec![
-        (r, false, true), (q, false, false), (o, false, true),
-        (crate::randomness::SLOT_HASHES_ID, false, false), (a, true, false),
-    ]);
-
-    let params = VrfRevealParams { signature: [3u8; 64], recovery_id: 2, value: [9u8; 32] };
-    let reveal = vrfmod::reveal_instruction(r, o, q, st, a, p, esc, ps, &params);
-    assert_eq!(reveal.program_id, SWITCHBOARD_PROGRAM_ID);
-    assert_eq!(reveal.data.len(), 8 + 64 + 1 + 32);
-    assert_eq!(&reveal.data[..8], &RANDOMNESS_REVEAL_IX_DISCRIMINATOR);
-    assert_eq!(&reveal.data[8..72], &[3u8; 64][..]);
-    assert_eq!(reveal.data[72], 2);
-    assert_eq!(&reveal.data[73..], &[9u8; 32][..]);
-    assert_eq!(flags(&reveal), vec![
-        (r, false, true), (o, false, false), (q, false, false), (st, false, true), (a, true, false),
-        (p, true, true), (crate::randomness::SLOT_HASHES_ID, false, false),
-        (anchor_lang::solana_program::system_program::ID, false, false), (esc, false, true),
-        (anchor_spl::token::ID, false, false), (anchor_spl::token::spl_token::native_mint::ID, false, false),
-        (ps, false, false),
-    ]);
-
-    let init = vrfmod::init_instruction(r, esc, a, q, p, ps, ls, lut, 777);
-    assert_eq!(&init.data[..8], &RANDOMNESS_INIT_IX_DISCRIMINATOR);
-    assert_eq!(&init.data[8..], &777u64.to_le_bytes());
-    assert_eq!(flags(&init), vec![
-        (r, true, true), (esc, false, true), (a, true, false), (q, false, true), (p, true, true),
-        (anchor_lang::solana_program::system_program::ID, false, false), (anchor_spl::token::ID, false, false),
-        (anchor_spl::associated_token::ID, false, false), (anchor_spl::token::spl_token::native_mint::ID, false, false),
-        (ps, false, false), (ls, false, false), (lut, false, true),
-        (vrfmod::ADDRESS_LOOKUP_TABLE_PROGRAM_ID, false, false),
-    ]);
-    // Discriminators are Anchor's global namespace hashes of the IDL names.
-    for (name, disc) in [("randomness_commit", RANDOMNESS_COMMIT_IX_DISCRIMINATOR),
-        ("randomness_reveal", RANDOMNESS_REVEAL_IX_DISCRIMINATOR), ("randomness_init", RANDOMNESS_INIT_IX_DISCRIMINATOR)] {
-        let h = anchor_lang::solana_program::hash::hash(format!("global:{name}").as_bytes()).to_bytes();
-        assert_eq!(&h[..8], &disc, "{name}");
-    }
-    assert_eq!(SWITCHBOARD_PROGRAM_ID.to_string(), "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv");
-    assert_eq!(SWITCHBOARD_QUEUE.to_string(), "A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w");
-    assert_eq!(vrfmod::ADDRESS_LOOKUP_TABLE_PROGRAM_ID.to_string(), "AddressLookupTab1e1111111111111111111111111");
-    assert_eq!(vrfmod::SWITCHBOARD_ON_DEMAND_DEVNET.to_string(), "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2");
-    assert_eq!(vrfmod::SWITCHBOARD_QUEUE_DEVNET.to_string(), "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7");
+fn four_offsets_are_eight_leader_windows_apart() {
+    assert_eq!(SEED_OFFSETS, [32, 64, 96, 128]);
+    assert_eq!(SLOT_HASH_DELAY, 32);
+    assert!(SLOT_HASH_RETENTION > SEED_OFFSETS[3]);
+    let seeds = vrf::seed_slots(1_000).unwrap();
+    assert_eq!(seeds, [1_032, 1_064, 1_096, 1_128]);
 }
 
-/// The Metaplex `CreateMetadataAccountV3` fee is charged to whoever pays for the
-/// Metadata account; a tool-producing commit must escrow it and the settler must
-/// get it back, otherwise every permissionless reveal leaks 0.01 SOL.
 #[test]
-fn tool_settlement_deposit_covers_the_metaplex_creation_fee() {
-    runtime();
-    let rent = Rent::default();
-    let without_fee = rent.minimum_balance(anchor_spl::token::Mint::LEN)
-        .saturating_add(rent.minimum_balance(anchor_spl::token::TokenAccount::LEN))
-        .saturating_add(rent.minimum_balance(TOOL_DATA_SPACE))
-        .saturating_add(rent.minimum_balance(TOOL_METADATA_ACCOUNT_MAX_SPACE));
-    assert_eq!(TOOL_METADATA_CREATION_FEE_LAMPORTS, 10_000_000, "documented 0.01 SOL Metaplex fee");
-    assert_eq!(vrfmod::tool_settlement_rent(&rent), without_fee + TOOL_METADATA_CREATION_FEE_LAMPORTS);
-}
-
-fn commit_accounts(randomness: &AccountInfo<'static>) -> vrfmod::CommitAccounts<'static> {
-    vrfmod::CommitAccounts {
-        switchboard_program: sb_program(),
-        randomness: randomness.clone(),
-        queue: plain(SWITCHBOARD_QUEUE),
-        oracle: plain(Pubkey::new_unique()),
-        recent_slothashes: plain(crate::randomness::SLOT_HASHES_ID),
-        vrf_authority: plain(vrf_authority_key()),
+fn a_complete_set_of_hashes_is_not_a_refund() {
+    let commit = 1_000u64;
+    let seeds = vrf::seed_slots(commit).unwrap();
+    let entries: Vec<_> = seeds.iter().map(|s| (*s, [9u8; 32])).collect();
+    let data = slot_hash_sysvar(&entries);
+    // All four hashes are still readable, so expire must not pay the player.
+    for seed in seeds {
+        assert!(parse_slot_hash(&data, seed).is_some());
     }
 }
 
-fn reveal_accounts(randomness: &AccountInfo<'static>, payer: &AccountInfo<'static>) -> vrfmod::RevealAccounts<'static> {
-    vrfmod::RevealAccounts {
-        switchboard_program: sb_program(),
-        randomness: randomness.clone(),
-        oracle: plain(Pubkey::new_unique()),
-        queue: plain(SWITCHBOARD_QUEUE),
-        stats: plain(Pubkey::new_unique()),
-        vrf_authority: plain(vrf_authority_key()),
-        payer: payer.clone(),
-        recent_slothashes: plain(crate::randomness::SLOT_HASHES_ID),
-        system_program: system_program_info(),
-        reward_escrow: plain(Pubkey::new_unique()),
-        token_program: token_program_info(),
-        wrapped_sol_mint: plain(anchor_spl::token::spl_token::native_mint::ID),
-        program_state: plain(Pubkey::new_unique()),
-    }
-}
-
-/// The pool lifecycle: one commit per slot, seeded by Switchboard in the same
-/// instruction; only the holder reveals, only inside the window, and the value
-/// is read back from the account; refunds only after the window.
 #[test]
-fn vrf_pool_slot_lifecycle_is_one_shot_and_time_separated() {
-    runtime();
-    let bump = pda(&[VRF_AUTHORITY_SEED]).1;
-    let rkey = Pubkey::new_unique();
-    let randomness = pool_randomness(rkey, 10, 11);
-    let holder = Pubkey::new_unique();
-    let (_, mut slot) = vrf_slot_state(rkey, Pubkey::default());
-
-    // Busy / retired / foreign randomness / foreign authority / foreign queue.
-    let (_, mut busy) = vrf_slot_state(rkey, Pubkey::new_unique());
-    rejected(vrfmod::commit(&mut busy, holder, &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "VrfSlotBusy");
-    let (_, mut retired) = vrf_slot_state(rkey, Pubkey::default());
-    retired.retired = true;
-    rejected(vrfmod::commit(&mut retired, holder, &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "VrfSlotRetired");
-    let other = pool_randomness(Pubkey::new_unique(), 10, 11);
-    rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&other), bump, SLOT_NOW).map(|_| ()), "InvalidRandomnessAccount");
-    let foreign_authority = info(rkey, false, 1,
-        randomness_bytes(Pubkey::new_unique(), SWITCHBOARD_QUEUE, 10, 11, [0; 32]), SWITCHBOARD_PROGRAM_ID, false);
-    rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&foreign_authority), bump, SLOT_NOW).map(|_| ()), "InvalidRandomnessAccount");
-    let foreign_queue = info(rkey, false, 1,
-        randomness_bytes(vrf_authority_key(), Pubkey::new_unique(), 10, 11, [0; 32]), SWITCHBOARD_PROGRAM_ID, false);
-    rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&foreign_queue), bump, SLOT_NOW).map(|_| ()), "InvalidRandomnessAccount");
-    assert!(switchboard_cpis().is_empty(), "nothing reached Switchboard before the checks passed");
-
-    // A commit that did not re-seed the account is rejected.
-    SB_MODE.with(|m| m.set(SB_STALE_COMMIT));
-    rejected(vrfmod::commit(&mut slot, holder, &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "RandomnessNotFresh");
-    assert_eq!(slot.lock, Pubkey::default());
-    SB_MODE.with(|m| m.set(SB_HONEST));
-
-    // Honest commit: seeded on the previous slot, locked to the holder, signed
-    // by the program PDA only.
-    let seed = vrfmod::commit(&mut slot, holder, &commit_accounts(&randomness), bump, SLOT_NOW).unwrap();
-    assert_eq!(seed, SLOT_NOW - 1);
-    assert_eq!(slot.lock, holder);
-    let sb = switchboard_cpis();
-    let last = sb.last().unwrap();
-    assert_eq!(&last.data[..8], &RANDOMNESS_COMMIT_IX_DISCRIMINATOR);
-    assert_eq!(last.signer_seeds, vec![vec![VRF_AUTHORITY_SEED.to_vec(), vec![bump]]]);
-    rejected(vrfmod::commit(&mut slot, Pubkey::new_unique(), &commit_accounts(&randomness), bump, SLOT_NOW).map(|_| ()), "VrfSlotBusy");
-
-    // Reveal: holder only, window only, value read back.
-    let cranker = wallet(Pubkey::new_unique(), true);
-    let v = [0x5au8; 32];
-    rejected(vrfmod::reveal(&mut slot, &Pubkey::new_unique(), &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "VrfSlotNotHeld");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW - VRF_REFUND_AFTER_SLOTS, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RevealWindowClosed");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed + 1, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RandomnessNotFresh");
-    assert_eq!(slot.lock, holder, "a failed reveal keeps the lock");
-    SB_MODE.with(|m| m.set(SB_SWAPPED_VALUE));
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "RandomnessNotRevealed");
-    SB_MODE.with(|m| m.set(SB_HONEST));
-    let got = vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).unwrap();
-    assert_eq!(got, v);
-    assert_eq!(slot.lock, Pubkey::default(), "the settled slot is free again");
-    let reveal_cpi = switchboard_cpis().last().unwrap().clone();
-    assert_eq!(&reveal_cpi.data[..8], &RANDOMNESS_REVEAL_IX_DISCRIMINATOR);
-    assert_eq!(reveal_cpi.accounts[5].pubkey, *cranker.key, "the settler pays Switchboard");
-    rejected(vrfmod::reveal(&mut slot, &holder, &rkey, seed, SLOT_NOW, &reveal_accounts(&randomness, &cranker),
-        &params_with(v), bump, SLOT_NOW).map(|_| ()), "VrfSlotNotHeld");
-
-    // Refund: never inside the window, exactly from its end.
-    let (_, mut held) = vrf_slot_state(rkey, holder);
-    let committed = SLOT_NOW - VRF_REFUND_AFTER_SLOTS + 1;
-    rejected(vrfmod::release_for_refund(&mut held, &holder, committed, SLOT_NOW), "CommitNotExpired");
-    assert!(vrfmod::reveal_window_open(committed, SLOT_NOW));
-    assert!(!vrfmod::reveal_window_open(committed - 1, SLOT_NOW) && vrfmod::refund_window_open(committed - 1, SLOT_NOW));
-    rejected(vrfmod::release_for_refund(&mut held, &Pubkey::new_unique(), committed - 1, SLOT_NOW), "VrfSlotNotHeld");
-    vrfmod::release_for_refund(&mut held, &holder, committed - 1, SLOT_NOW).unwrap();
-    assert_eq!(held.lock, Pubkey::default());
+fn a_skipped_slot_inside_retention_is_distinct_from_an_aged_out_hash() {
+    let commit = 1_000u64;
+    let seeds = vrf::seed_slots(commit).unwrap();
+    let inside = seeds[0] + SLOT_HASH_RETENTION - 1;
+    let outside = seeds[3] + SLOT_HASH_RETENTION;
+    assert!(inside < seeds[0] + SLOT_HASH_RETENTION, "first hash still classifiable");
+    assert!(outside >= seeds[3] + SLOT_HASH_RETENTION, "last hash has aged out");
 }
 
-/// Cross-language vector: docs/ECONOMY_RNG_EV.md publishes the outcome formula
-/// and scripts/vrf/devnet-smoke.mjs (plus tests/readiness/vrf-smoke.test.cjs)
-/// recompute it in JavaScript. These exact numbers are asserted on both sides.
 #[test]
-fn vrf_roll_matches_the_published_javascript_vector() {
-    let value = [7u8; 32];
-    let commit = Pubkey::new_from_array([9u8; 32]);
-    let roll = derive_roll(&value, b"pack", commit.as_ref());
-    let hex: String = roll.iter().map(|b| format!("{b:02x}")).collect();
-    assert_eq!(hex, "88acec04a70c78304cf18b01bcb04ce09b677358bb63b1556d6a7fa0ec317ab9");
-    assert_eq!(vrfmod::lane(&roll, 0), 3_492_555_422_507_510_920);
-    assert_eq!(vrfmod::bps(vrfmod::lane(&roll, 0)), 1_893);
-    assert_eq!(vrfmod::below(vrfmod::lane(&roll, 1), 3), 2);
-    let (rarity, tool_type) =
-        crate::instructions::settlement::roll_tool(&value, b"pack", &commit, &PACK_SMALL_ODDS_BPS).unwrap();
-    assert_eq!(rarity, Rarity::Common);
-    assert_eq!(tool_type, PACK_TOOL_TYPES[2]);
-    for (tag, expected) in [
-        (b"reroll".as_ref(), 4_301u64),
-        (b"explore".as_ref(), 377),
-        (b"forge".as_ref(), 2_658),
-        (b"lottery".as_ref(), 3_599),
-        (b"drum".as_ref(), 1_369),
-    ] {
-        assert_eq!(vrfmod::bps(vrfmod::lane(&derive_roll(&value, tag, commit.as_ref()), 0)), expected);
-    }
-}
-
-/// Outcomes are pure, domain-separated functions of the oracle value and the
-/// commit snapshot; zero-weight rarities are unreachable; ranges hold.
-#[test]
-fn vrf_outcomes_are_pure_and_bounded() {
-    let v = [9u8; 32];
-    assert_ne!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"pack", b"b"));
-    assert_ne!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"forge", b"a"));
-    assert_eq!(derive_roll(&v, b"pack", b"a"), derive_roll(&v, b"pack", b"a"));
-    assert_eq!(vrfmod::below(u64::MAX, 7), 6);
-    assert_eq!(vrfmod::below(0, 7), 0);
-    assert_eq!(vrfmod::bps(u64::MAX), 9_999);
-
-    let mut rng = XorShift(0xf06_2026);
-    let commit = Pubkey::new_unique();
-    let mut seen = [0u32; 5];
-    for _ in 0..4_000 {
-        let mut value = [0u8; 32];
-        for chunk in value.chunks_mut(8) {
-            chunk.copy_from_slice(&rng.next().to_le_bytes());
-        }
-        let (rarity, tool_type) =
-            crate::instructions::settlement::roll_tool(&value, b"pack", &commit, &PACK_SMALL_ODDS_BPS).unwrap();
-        seen[rarity as usize] += 1;
-        assert!(PACK_TOOL_TYPES.contains(&tool_type.as_str()));
-        for tier in 1..=MAX_EXPLORATION_TIER {
-            let (ok, reward) = crate::instructions::exploration::trip_outcome(&value, &commit, tier).unwrap();
-            let idx = (tier - 1) as usize;
-            if ok {
-                assert!(reward >= EXPLORATION_SHARDS_MIN[idx] as u64 * RESOURCE_UNIT);
-                assert!(reward <= EXPLORATION_SHARDS_MAX[idx] as u64 * RESOURCE_UNIT);
-            } else {
-                assert_eq!(reward, 0);
-            }
-        }
-        for level in 0..ENCHANT_MAX_LEVEL {
-            let (after, outcome) = crate::instructions::forge::forge_outcome(&value, &commit, level, false).unwrap();
-            match outcome {
-                0 => assert_eq!(after, level + 1),
-                1 => assert_eq!(after, level.saturating_sub(1)),
-                _ => assert_eq!(after, 0),
-            }
-            let (_, protected) = crate::instructions::forge::forge_outcome(&value, &commit, level, true).unwrap();
-            assert_ne!(protected, 2, "the protector turns a full loss into a partial fail");
-        }
-    }
-    assert_eq!(seen[4], 0, "Legendary is never rolled");
-    // 60/32/7/1 %: loose 4-sigma bands over 4000 draws.
-    assert!((2_250..=2_550).contains(&seen[0]), "{seen:?}");
-    assert!((1_150..=1_410).contains(&seen[1]), "{seen:?}");
-    assert!((200..=365).contains(&seen[2]), "{seen:?}");
-    assert!(seen[3] <= 90, "{seen:?}");
-    assert!(crate::instructions::exploration::trip_outcome(&v, &commit, 0).is_err());
-    assert!(crate::instructions::forge::forge_outcome(&v, &commit, ENCHANT_MAX_LEVEL, false).is_err());
-}
-
-fn pack_config_account(pack_type: u8, price: u64) -> AccountInfo<'static> {
-    let (key, bump) = pda(&[PACK_CONFIG_SEED, &[pack_type]]);
-    program_account(key, &PackConfig { pack_type, price_lamports: price, odds_bps: PACK_SMALL_ODDS_BPS, bump }, PACK_CONFIG_SPACE)
-}
-
-/// F-06 end to end on the real handlers: the pack commit takes the operator
-/// gate and the price bound, seeds the pool slot through Switchboard and locks
-/// it; the permissionless reveal settles once, pays exactly the escrow out and
-/// frees the slot; a refund is only possible after the window.
-#[test]
-fn pack_opening_settles_once_through_the_program_owned_pool() {
-    runtime();
-    let w = World::new();
-    let user = Pubkey::new_unique();
-    let nonce = 42u64;
-    let price = PACK_SMALL_PRICE_LAMPORTS;
-    let rkey = Pubkey::new_unique();
-    let (commit_key, commit_bump) = pda(&[PACK_COMMIT_SEED, user.as_ref(), &nonce.to_le_bytes()]);
-    let (slot_key, slot_state) = vrf_slot_state(rkey, Pubkey::default());
-    let commit_infos = |operator: AccountInfo<'static>, slot: VrfSlot| {
-        vec![
-            w.config_info(),
-            operator,
-            wallet(user, true),
-            pack_config_account(0, price),
-            info(commit_key, false, rent_exempt(PACK_COMMIT_SPACE), vec![0; PACK_COMMIT_SPACE], crate::ID, false),
-            program_account(slot_key, &slot, VRF_SLOT_SPACE),
-            pool_randomness(rkey, 10, 11),
-            info(vrf_authority_key(), false, 0, Vec::new(), anchor_lang::solana_program::system_program::ID, false),
-            plain(SWITCHBOARD_QUEUE),
-            plain(Pubkey::new_unique()),
-            plain(crate::randomness::SLOT_HASHES_ID),
-            sb_program(),
-            system_program_info(),
-        ]
-    };
-    let mut ix = vec![0u8];
-    ix.extend_from_slice(&nonce.to_le_bytes());
-    ix.extend_from_slice(&price.to_le_bytes());
-
-    // The operator co-signature is the backend gate.
-    let err = rejected(validate::<PackOpenCommit>(commit_infos(wallet(Pubkey::new_unique(), true), slot_state.clone()), &ix), "Unauthorized");
-    assert!(blames(&err, "config"), "{err}");
-    // A slot held by another commit fails the whole commit.
-    let (mut accounts, bumps) = parse::<PackOpenCommit>(
-        commit_infos(wallet(w.operator, true), vrf_slot_state(rkey, Pubkey::new_unique()).1), &ix).unwrap();
-    rejected(crate::instructions::pack_open_commit::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), PackType::Small, nonce, price), "VrfSlotBusy");
-    // Price above the caller's maximum.
-    let (mut accounts, bumps) = parse::<PackOpenCommit>(commit_infos(wallet(w.operator, true), slot_state.clone()), &ix).unwrap();
-    rejected(crate::instructions::pack_open_commit::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), PackType::Small, nonce, price - 1), "PriceAboveMaximum");
-
-    runtime();
-    let (mut accounts, bumps) = parse::<PackOpenCommit>(commit_infos(wallet(w.operator, true), slot_state.clone()), &ix).unwrap();
-    crate::instructions::pack_open_commit::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), PackType::Small, nonce, price).unwrap();
-    let deposit = vrfmod::tool_settlement_rent(&Rent::default());
-    let transfers: Vec<u64> = cpi_log().iter()
-        .filter(|c| c.program_id == anchor_lang::solana_program::system_program::ID && c.data.get(..4) == Some(&[2, 0, 0, 0][..]))
-        .map(|c| u64::from_le_bytes(c.data[4..12].try_into().unwrap()))
-        .collect();
-    assert_eq!(transfers, vec![price + deposit], "price + settlement deposit escrowed in one transfer");
-    let pc = &accounts.pack_commit;
-    assert_eq!((pc.user, pc.nonce, pc.pack_type, pc.odds_bps), (user, nonce, 0, PACK_SMALL_ODDS_BPS));
-    assert_eq!((pc.paid_lamports, pc.deposit_lamports, pc.randomness, pc.seed_slot, pc.commit_slot, pc.bump),
-        (price, deposit, rkey, SLOT_NOW - 1, SLOT_NOW, commit_bump));
-    assert_eq!(accounts.vrf_slot.lock, commit_key);
-    let recorded = load_randomness(&accounts.randomness.to_account_info()).unwrap();
-    assert_eq!(recorded.seed_slot, SLOT_NOW - 1);
-
-    // ---- reveal (permissionless: a third-party cranker settles)
-    runtime();
-    let commit_state = PackCommit {
-        user, nonce, pack_type: 0, odds_bps: PACK_SMALL_ODDS_BPS, paid_lamports: price, deposit_lamports: deposit,
-        randomness: rkey, seed_slot: SLOT_NOW - 1, commit_slot: SLOT_NOW - 3, bump: commit_bump,
-    };
-    let (mint_key, _) = pda(&[PACK_MINT_SEED, commit_key.as_ref()]);
-    let cranker_key = Pubkey::new_unique();
-    let reveal_infos = |commit_state: &PackCommit, randomness: AccountInfo<'static>, lock: Pubkey| {
-        let commit = program_account(commit_key, commit_state, PACK_COMMIT_SPACE);
-        set_lamports(&commit, rent_exempt(PACK_COMMIT_SPACE) + price + deposit);
-        vec![
-            w.config_info(),
-            wallet(cranker_key, true),
-            commit,
-            wallet(user, false),
-            wallet(w.treasury, false),
-            spl_mint(mint_key, 0, Some(w.auth_key), None),
-            token_account(ata(&user, &mint_key), mint_key, user, 0),
-            info(pda(&[TOOL_SEED, mint_key.as_ref()]).0, false, rent_exempt(TOOL_DATA_SPACE), vec![0; TOOL_DATA_SPACE], crate::ID, false),
-            w.auth_info(),
-            program_account(slot_key, &vrf_slot_state(rkey, lock).1, VRF_SLOT_SPACE),
-            randomness,
-            info(vrf_authority_key(), false, 0, Vec::new(), anchor_lang::solana_program::system_program::ID, false),
-            plain(ORACLE),
-            plain(SWITCHBOARD_QUEUE),
-            plain(vrfmod::stats_address(&ORACLE)),
-            plain(crate::randomness::SLOT_HASHES_ID),
-            plain(vrfmod::reward_escrow_address(&rkey)),
-            plain(anchor_spl::token::spl_token::native_mint::ID),
-            plain(vrfmod::SWITCHBOARD_STATE),
-            sb_program(),
-            token_program_info(),
-            executable_program(anchor_spl::associated_token::ID),
-            system_program_info(),
-            tool_metadata_registry_info(),
-            tool_metadata_account(mint_key),
-            token_metadata_program_info(),
-        ]
-    };
-    // Another pool account in the randomness slot is refused by the context.
-    let err = rejected(validate::<PackOpenReveal>(reveal_infos(&commit_state, pool_randomness(Pubkey::new_unique(), SLOT_NOW - 1, 0), commit_key), &[]),
-        "InvalidRandomnessAccount");
-    assert!(blames(&err, "randomness"), "{err}");
-
-    // Switchboard pass-through accounts are bound in this program's context too.
-    for (index, field) in [(12usize, "oracle"), (14, "stats"), (16, "reward_escrow"), (18, "program_state")] {
-        let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
-        infos[index] = plain(Pubkey::new_unique());
-        let err = rejected(validate::<PackOpenReveal>(infos, &[]), "InvalidRandomnessAccount");
-        assert!(blames(&err, field), "{field}: {err}");
-    }
-    // The native mint is pinned: a caller cannot swap in another mint account,
-    // which is what the reveal CPI pays its reward escrow in.
-    {
-        let mut infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
-        infos[17] = plain(Pubkey::new_unique());
-        let err = rejected(validate::<PackOpenReveal>(infos, &[]), "ConstraintAddress");
-        assert!(blames(&err, "wrapped_sol_mint"), "{err}");
-    }
-
-    let infos = reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key);
-    let (commit_i, cranker_i, treasury_i) = (infos[2].clone(), infos[1].clone(), infos[4].clone());
-    let (mut accounts, bumps) = parse::<PackOpenReveal>(infos, &[]).unwrap();
-    let value = [0x33u8; 32];
-    crate::instructions::pack_open_reveal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), params_with(value)).unwrap();
-    let (rarity, tool_type) = crate::instructions::settlement::roll_tool(&value, b"pack", &commit_key, &PACK_SMALL_ODDS_BPS).unwrap();
-    assert_eq!((accounts.tool_data.rarity, accounts.tool_data.tool_type.clone()), (rarity, tool_type));
-    assert_eq!((accounts.tool_data.owner, accounts.tool_data.operator, accounts.tool_data.mint), (user, user, mint_key));
-    assert_eq!(accounts.tool_data.durability, MAX_DURABILITY);
-    assert_eq!(treasury_i.lamports(), WALLET_LAMPORTS + price, "the price reaches the treasury only now");
-    // The settler fronted the Metaplex creation fee inside the Metadata CPI, so
-    // being made whole means the whole deposit, fee included.
-    assert_eq!(cranker_i.lamports(), WALLET_LAMPORTS + deposit, "the settler is made whole");
-    assert_eq!(commit_i.lamports(), rent_exempt(PACK_COMMIT_SPACE), "only the rent is left for `close = user`");
-    assert_eq!(accounts.vrf_slot.lock, Pubkey::default());
-    assert!(cpi_log().iter().any(|c| c.program_id == anchor_spl::token::ID && c.data.first() == Some(&7)), "one NFT minted");
-
-    // A slot held by someone else cannot settle this commit.
-    let (mut accounts, bumps) = parse::<PackOpenReveal>(
-        reveal_infos(&commit_state, pool_randomness(rkey, SLOT_NOW - 1, 0), Pubkey::new_unique()), &[]).unwrap();
-    rejected(crate::instructions::pack_open_reveal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), params_with(value)), "VrfSlotNotHeld");
-
-    // ---- refund: refused inside the window, accepted after it
-    let expire_infos = |commit_slot: u64| {
-        let mut st = commit_state.clone();
-        st.commit_slot = commit_slot;
-        vec![
-            w.config_info(),
-            program_account(commit_key, &st, PACK_COMMIT_SPACE),
-            wallet(user, false),
-            program_account(slot_key, &vrf_slot_state(rkey, commit_key).1, VRF_SLOT_SPACE),
-        ]
-    };
-    let (mut accounts, bumps) = parse::<PackOpenExpire>(expire_infos(SLOT_NOW - VRF_REFUND_AFTER_SLOTS + 1), &[]).unwrap();
-    rejected(crate::instructions::pack_open_expire::handler(Context::new(&crate::ID, &mut accounts, &[], bumps)), "CommitNotExpired");
-    let (mut accounts, bumps) = parse::<PackOpenExpire>(expire_infos(SLOT_NOW - VRF_REFUND_AFTER_SLOTS), &[]).unwrap();
-    crate::instructions::pack_open_expire::handler(Context::new(&crate::ID, &mut accounts, &[], bumps)).unwrap();
-    assert_eq!(accounts.vrf_slot.lock, Pubkey::default());
-    // ...and the reveal of the same commit is closed at that very slot.
-    let mut late = commit_state.clone();
-    late.commit_slot = SLOT_NOW - VRF_REFUND_AFTER_SLOTS;
-    let (mut accounts, bumps) = parse::<PackOpenReveal>(reveal_infos(&late, pool_randomness(rkey, SLOT_NOW - 1, 0), commit_key), &[]).unwrap();
-    rejected(crate::instructions::pack_open_reveal::handler(Context::new(&crate::ID, &mut accounts, &[], bumps), params_with(value)), "RevealWindowClosed");
-}
-
-/// An undrawn round refunds each ticket in full to its buyer after the timeout
-/// (never to the treasury), and only once.
-#[test]
-fn lottery_tickets_of_an_undrawn_round_are_refunded_to_their_buyers() {
-    runtime();
-    let w = World::new();
-    let round_id = 7u64;
-    let (round_key, round_bump) = pda(&[LOTTERY_ROUND_SEED, &round_id.to_le_bytes()]);
-    let buyer = Pubkey::new_unique();
-    let ticket_number = 3u64;
-    let (ticket_key, _) = pda(&[LOTTERY_TICKET_SEED, &round_id.to_le_bytes(), &ticket_number.to_le_bytes()]);
-    let round = |created_at: i64, draw_committed: bool| LotteryRound {
-        round_id, pool_lamports: 5 * LOTTERY_TICKET_PRICE_LAMPORTS, tickets_sold: 5, seed_slot: 0, drawn: false,
-        winning_ticket: 0, claimed: false, bump: round_bump, created_at, draw_committed, draw_commit_slot: 0,
-        randomness: Pubkey::default(),
-    };
-    let infos = |r: LotteryRound| {
-        let round_info = program_account(round_key, &r, LOTTERY_ROUND_SPACE);
-        set_lamports(&round_info, rent_exempt(LOTTERY_ROUND_SPACE) + r.pool_lamports);
-        vec![
-            w.config_info(),
-            round_info,
-            program_account(ticket_key, &LotteryTicket { round_id, ticket_number, buyer }, LOTTERY_TICKET_SPACE),
-            wallet(buyer, false),
-        ]
-    };
-    let run = |r: LotteryRound| -> (Result<()>, AccountInfo<'static>, AccountInfo<'static>) {
-        let infos = infos(r);
-        let (round_i, buyer_i) = (infos[1].clone(), infos[3].clone());
-        let (mut accounts, bumps) = parse::<RefundLotteryTicket>(infos, &[]).unwrap();
-        let result = crate::instructions::lottery::refund_ticket_handler(Context::new(&crate::ID, &mut accounts, &[], bumps));
-        (result, round_i, buyer_i)
-    };
-    let expired = NOW_TS - LOTTERY_ROUND_TIMEOUT_SECONDS;
-    rejected(run(round(expired + 1, false)).0, "LotteryRoundNotExpired");
-    rejected(run(round(expired, true)).0, "LotteryDrawAlreadyCommitted");
-    let (result, round_i, buyer_i) = run(round(expired, false));
-    result.unwrap();
-    assert_eq!(buyer_i.lamports(), WALLET_LAMPORTS + LOTTERY_TICKET_PRICE_LAMPORTS, "full ticket price back to the buyer");
-    assert_eq!(round_i.lamports(), rent_exempt(LOTTERY_ROUND_SPACE) + 4 * LOTTERY_TICKET_PRICE_LAMPORTS);
+fn derive_roll_changes_when_any_input_changes() {
+    let value = [3u8; 32];
+    let a = derive_roll(&value, b"pack", b"one");
+    let b = derive_roll(&value, b"pack", b"two");
+    let c = derive_roll(&value, b"forge", b"one");
+    assert_ne!(a, b);
+    assert_ne!(a, c);
 }
 
 // ---------------------------------------------------------------- duplication (#56)

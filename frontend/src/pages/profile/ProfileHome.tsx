@@ -8,6 +8,7 @@ import { handleTxResponse } from "../../lib/txFlow";
 import type { PlayerInitIntent, PayerCostQuote } from "../../lib/transactionIntent";
 import { formatLamportsAsSol } from "../../lib/formatLamports";
 import { WalletButton } from "../../components/ui/WalletButton";
+import { legalUiCopy } from "../../i18n/legalUiCopy";
 import { ListRow } from "../../components/ListRow";
 import { Key, Keys, Note, Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
 import { useWalletStr } from "../../lib/useWalletStr";
@@ -122,7 +123,10 @@ export function ProfileHome() {
 
   return (
     <div lang={language} className="profile-home px-4 pt-5 pb-24 min-w-0">
-      <div className="flex justify-end mb-2"><WalletButton /></div>
+      <div className="flex justify-end mb-2 gap-2">
+        <button type="button" className="text-xs text-straw underline underline-offset-2" onClick={() => window.dispatchEvent(new Event("nf:open-privacy"))}>{legalUiCopy[language].settings}</button>
+        <WalletButton />
+      </div>
       <Panel tier="hero" id={<Sticker bars>{short ?? copy.guestSticker}</Sticker>}
         meta={user ? copy.operator : copy.noWallet} title={short ?? copy.guest}
         sub={state === 'disconnected' ? copy.connect : state === 'loading' ? copy.reading : state === 'error' ? copy.unknown : state === 'missing' ? copy.playerMissing : copy.source}>

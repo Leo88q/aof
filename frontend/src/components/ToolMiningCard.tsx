@@ -15,6 +15,7 @@ import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
 import { useWalletStore } from "../store/walletStore";
 import { toNum } from "../lib/marketUtils";
 import { readMiningEnabled, useMiningAvailability } from "../lib/useMiningAvailability";
+import { maxSelectableMiningHours, rarityHourCap } from "../lib/miningHours";
 
 interface ToolMiningCardProps {
   tool: any;
@@ -62,7 +63,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       let resp: any;
       if (kind === "stake") {
         flashMsg(copy.staking);
-        resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(86400) });
+        resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(60) });
       } else if (kind === "unstake") {
         flashMsg(copy.unstaking);
         resp = await api.tools.unstake({ user: address, mint: tool.mint });
@@ -73,7 +74,15 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
         flashMsg(copy.opening);
         resp = await api.tools.collectMining({ user: address, mint: tool.mint });
       }
-      const r = await handleTxResponse(resp);
+      let r = await handleTxResponse(resp);
+      if (!r.success && r.error === walletRuntimeCopy[language].blockhashExpired) {
+        flashMsg(walletRuntimeCopy[language].blockhashExpired);
+        if (kind === "stake") resp = await api.tools.stake({ user: address, mint: tool.mint, lockSeconds: String(60) });
+        else if (kind === "unstake") resp = await api.tools.unstake({ user: address, mint: tool.mint });
+        else if (kind === "start") resp = await api.tools.startMining({ user: address, mint: tool.mint, hours: selectedHours });
+        else resp = await api.tools.collectMining({ user: address, mint: tool.mint });
+        r = await handleTxResponse(resp);
+      }
       flashMsg(r.success ? (r.signature ? `${copy.done}: ${r.signature.slice(0, 10)}…` : copy.done) : (r.error || copy.failed));
       if (r.success) {
         window.dispatchEvent(new CustomEvent("aof:refresh"));
@@ -90,7 +99,8 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
   const durability = rawDurability === null || rawDurability === undefined || !Number.isFinite(Number(rawDurability))
     ? null : Number(rawDurability);
   const durabilityPct = durability === null ? null : Math.max(0, Math.min(100, (durability / 20) * 100));
-  const maxHours = Math.max(1, Math.min(20, durability ?? 1));
+  const hourCap = rarityHourCap(tool.rarity);
+  const maxHours = maxSelectableMiningHours(tool.rarity, durability);
   const selectedHours = Math.max(1, Math.min(hours, maxHours));
 
   const state = durabilityPct === null
@@ -158,7 +168,7 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {tool.staked && !tool.isMining && (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-straw text-xs">{copy.miningHours}</span>
+            <span className="text-straw text-xs">{copy.miningHours}. {copy.rarityHourCap.replace("{hours}", hourCap === null ? "—" : String(hourCap))}</span>
             <div className="flex items-center gap-2">
               <button type="button" aria-label={copy.decrease} onClick={() => setHours((h) => Math.max(1, h - 1))}
                 className="w-8 h-8 rounded-lg bg-soil-700 border border-straw/20 text-parchment">−</button>
@@ -168,7 +178,9 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
             </div>
           </div>
           <button onClick={() => run("start")} disabled={!MINING_ENABLED || busy || durability === null || durability < 1}
-            className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
+            className={MINING_ENABLED && !busy && durability !== null && durability >= 1
+              ? "mine-start w-full py-2.5 rounded-xl font-semibold text-sm"
+              : "w-full py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60"}>
             {MINING_ENABLED ? copy.start : copy.startDisabled}
           </button>
           <button onClick={() => run("unstake")} disabled={busy || durability === null || durability < 20}
@@ -181,12 +193,12 @@ export function ToolMiningCard({ tool, onChanged }: ToolMiningCardProps) {
       {tool.isMining && (
         <div className="mt-3">
           {canCollect ? (
-            <motion.button onClick={() => run("collect")} disabled={!MINING_ENABLED || busy}
-              animate={MINING_ENABLED ? { scale: [1, 1.03, 1] } : undefined}
-              transition={{ repeat: Infinity, duration: 1.4 }}
-              className="w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
+            <button type="button" onClick={() => run("collect")} disabled={!MINING_ENABLED || busy}
+              className={MINING_ENABLED && !busy
+                ? "mine-start w-full py-2.5 rounded-xl font-bold text-sm"
+                : "w-full py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60"}>
               {MINING_ENABLED ? copy.collect : copy.collectDisabled}
-            </motion.button>
+            </button>
           ) : (
             <div>
               <div className="flex flex-wrap justify-between gap-1 text-xs text-straw mb-1">

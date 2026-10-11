@@ -1,18 +1,17 @@
 /**
- * [F-06] Switchboard On-Demand settlement — backend side.
+ * [F-06] Randomness settlement — backend side.
  *
- * The on-chain programs own their randomness accounts (authority = program
- * PDA "vrf_authority"), so this module never signs anything for Switchboard.
- * It only:
- *   - picks a free pool slot and a live oracle for a commit transaction;
- *   - fetches the oracle's signed reveal from the Switchboard gateway (without
- *     forwarding this backend's RPC URL) and turns it into the accounts +
- *     params of a program reveal instruction;
- *   - reports pool health (the commit routes refuse new commits while any
- *     commit is stuck — the circuit breaker of docs/VRF_SWITCHBOARD.md).
+ * Packs, lottery, exploration reveal, forge and random reroll call the same
+ * program commit and reveal as pack opening. That path locks a pool slot and
+ * settles from a future slot hash. The oracle signature is ignored. This
+ * module does not ask an oracle for those five rooms and does not read
+ * `AOF_RANDOMNESS` for them.
  *
- * Anyone can settle a commit with the same data, so the backend being slow or
- * down never blocks a player: the player can fetch the reveal and settle.
+ * Drum was not moved onto that path. Its reveal still has the old gateway
+ * branch, and that flag must stay unset.
+ *
+ * Pool health is unchanged: commit routes refuse new commits while any commit
+ * is stuck.
  */
 import {
   ComputeBudgetProgram,
@@ -41,8 +40,23 @@ export const SWITCHBOARD: Record<SwitchboardCluster, { programId: PublicKey; que
 };
 export const ADDRESS_LOOKUP_TABLE_PROGRAM_ID = new PublicKey("AddressLookupTab1e1111111111111111111111111");
 
-/** aof-core/src/constants.rs::VRF_REFUND_AFTER_SLOTS (reveal window / refund threshold). */
-export const VRF_REFUND_AFTER_SLOTS = 18_000;
+/** Retained constant. Live phase uses the last seed offset plus SlotHashes retention, not this boundary. */
+export const VRF_REFUND_AFTER_SLOTS = 432;
+/** aof-core/src/vrf.rs. The refund boundary is delay + reveal slots. */
+export const SLOT_HASH_DELAY = 32;
+export const SLOT_HASH_REVEAL_SLOTS = 400;
+
+export type RandomnessMode = "slot-hash" | "switchboard";
+
+/**
+ * Slot-hash is the only mode. `AOF_RANDOMNESS=switchboard` is rejected.
+ * Any other value, including an empty one, stays on the slot-hash path.
+ */
+export function randomnessMode(env: NodeJS.ProcessEnv = process.env): RandomnessMode {
+  const raw = (env.AOF_RANDOMNESS || "").trim().toLowerCase();
+  if (raw === "switchboard") throw new Error("AOF_RANDOMNESS=switchboard is not a randomness source");
+  return "slot-hash";
+}
 
 /**
  * Must match the program build: `--features devnet` programs trust the devnet
@@ -74,8 +88,10 @@ export function vrfRandomnessPda(programId: PublicKey, index: number): PublicKey
   return PublicKey.findProgramAddressSync([enc("vrf_randomness"), le], programId)[0];
 }
 
-export function vrfSlotPda(programId: PublicKey, randomness: PublicKey): PublicKey {
-  return PublicKey.findProgramAddressSync([enc("vrf_slot"), randomness.toBuffer()], programId)[0];
+export function vrfSlotPda(programId: PublicKey, index: number): PublicKey {
+  const le = Buffer.alloc(4);
+  le.writeUInt32LE(index);
+  return PublicKey.findProgramAddressSync([enc("vrf_slot"), le], programId)[0];
 }
 
 export function statsPda(oracle: PublicKey, env: NodeJS.ProcessEnv = process.env): PublicKey {
@@ -269,11 +285,26 @@ export async function reservePoolSlot(program: any, connection: Connection): Pro
   return pick;
 }
 
-export function vrfUnavailable(reason: string): Error {
-  const error = new Error(reason);
-  (error as { status?: number }).status = 503;
-  (error as { expose?: boolean }).expose = true;
+/** Drop a reservation when the commit was not handed to a wallet. A failed
+ * oracle read must not make the next click look like a full pool. */
+export function releasePoolSlot(slot: PoolSlot): void {
+  reservations.delete(slot.vrfSlot.toBase58());
+}
+
+export function vrfUnavailable(reason: string, details?: string): Error {
+  const error = new Error(reason) as Error & { status?: number; expose?: boolean; details?: string };
+  error.status = 503;
+  error.expose = true;
+  if (details) error.details = details;
   return error;
+}
+
+/** JSON body for a route catch. `details` is diagnostic; `error` stays a stable code. */
+export function publicErrorBody(error: unknown): { status: number; body: { error: string; details?: string } } {
+  const status = Number((error as { status?: number })?.status) || 400;
+  const message = error instanceof Error ? error.message : String(error);
+  const details = (error as { details?: string })?.details;
+  return { status, body: details ? { error: message, details } : { error: message } };
 }
 
 // ---------------------------------------------------------------- Switchboard SDK
@@ -313,12 +344,67 @@ export type OracleCandidate = {
   pullOracleEnabled?: boolean;
   /** Oracle software version as reported by live health (may be absent). */
   version?: string | null;
+  /** Unix seconds from the oracle account, for the refusal log. */
+  lastHeartbeatUnix?: number;
+  validUntilUnix?: number;
 };
 
 /** Mirrors isRandomnessOracleCandidateEligible of @switchboard-xyz/common. */
 export function oracleEligible(c: OracleCandidate): boolean {
   return Boolean(c.gatewayUrl) && c.isOnQueue && c.isVerified && c.heartbeatFresh && c.quoteFresh &&
     c.restricted !== true && c.gatewayEnabled !== false && c.pullOracleEnabled !== false;
+}
+
+export function oracleRejectionReasons(c: OracleCandidate): string[] {
+  const reasons: string[] = [];
+  if (!c.gatewayUrl) reasons.push("missing-gateway");
+  if (!c.isOnQueue) reasons.push("not-on-queue");
+  if (!c.isVerified) reasons.push("verification-failed");
+  if (!c.heartbeatFresh) reasons.push("heartbeat-stale");
+  if (!c.quoteFresh) reasons.push("quote-expired");
+  if (c.restricted === true) reasons.push("restricted");
+  if (c.gatewayEnabled === false) reasons.push("gateway-disabled");
+  if (c.pullOracleEnabled === false) reasons.push("pull-oracle-disabled");
+  return reasons;
+}
+
+/** One line for the API log and the commit 503 `details` field. */
+export function oracleSelectionSummary(candidates: OracleCandidate[], nowUnix = Math.floor(Date.now() / 1000)): string {
+  const counts = new Map<string, number>();
+  let newestHeartbeat = Number.POSITIVE_INFINITY;
+  let soonestQuote = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const reasons = oracleRejectionReasons(forRandomnessSelection(candidate));
+    const key = reasons.length ? reasons.join(",") : "eligible";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (candidate.lastHeartbeatUnix !== undefined) newestHeartbeat = Math.min(newestHeartbeat, nowUnix - candidate.lastHeartbeatUnix);
+    if (candidate.validUntilUnix !== undefined) soonestQuote = Math.min(soonestQuote, candidate.validUntilUnix - nowUnix);
+  }
+  const parts = [...counts.entries()].map(([reason, count]) => `${reason}=${count}`);
+  if (Number.isFinite(newestHeartbeat)) parts.push(`newestHeartbeatAge=${newestHeartbeat}s`);
+  if (Number.isFinite(soonestQuote)) parts.push(`soonestQuote=${soonestQuote}s`);
+  return parts.join(" ") || "none";
+}
+
+/** A randomness commit does not need a pull feed. Heartbeat, quote, verification
+ * and queue membership still have to be fresh, or Switchboard rejects the seed. */
+export function forRandomnessSelection(c: OracleCandidate): OracleCandidate {
+  return c.pullOracleEnabled === false ? { ...c, pullOracleEnabled: undefined } : c;
+}
+
+export function chooseOracle(candidates: OracleCandidate[], random: () => number = Math.random): PublicKey {
+  try {
+    return pickOracle(candidates, random);
+  } catch {
+    const relaxed = candidates.map(forRandomnessSelection);
+    if (!relaxed.some(oracleEligible)) {
+      const summary = oracleSelectionSummary(candidates);
+      console.error("[vrf] no fresh randomness oracle:", summary);
+      throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE", summary);
+    }
+    console.warn("[vrf] no pull-enabled oracle; using an on-chain fresh randomness oracle");
+    return pickOracle(relaxed, random);
+  }
 }
 
 /** Mirrors computeMajorityVersion of @switchboard-xyz/common: the most frequent version, first one on a tie. */
@@ -382,8 +468,132 @@ export function oracleCandidateFromInspection(c: any): OracleCandidate {
   };
 }
 
+function oracleErrorText(error: unknown): string {
+  return String((error as Error)?.message || error).replace(/\s+/g, " ").slice(0, 200);
+}
+
+/**
+ * Switchboard OracleAccountData / QueueAccountData, discriminator included.
+ * Anchors hashes `account:OracleAccountData` and `account:QueueAccountData`.
+ * Field offsets are the published bytemuck layout (verification status 4 =
+ * verified). Randomness selection reads these bytes itself: the SDK's
+ * inspectRandomnessOracles waits on gateway health (about 10s) and then throws
+ * the whole list away when no oracle has a pull feed.
+ */
+const SWITCHBOARD_ORACLE_DISCRIMINATOR = Buffer.from([128, 30, 16, 241, 170, 73, 55, 54]);
+const SWITCHBOARD_QUEUE_DISCRIMINATOR = Buffer.from([217, 194, 55, 127, 184, 83, 138, 1]);
+const SWITCHBOARD_ORACLE_VERIFIED = 4;
+const SWITCHBOARD_ORACLE_LAYOUT = {
+  verificationStatus: 72,
+  validUntil: 88,
+  queue: 3472,
+  lastHeartbeat: 3512,
+  gatewayUri: 3584,
+  gatewayUriLength: 64,
+  isOnQueue: 3656,
+  minLength: 3657,
+} as const;
+const SWITCHBOARD_QUEUE_LAYOUT = {
+  oracleKeys: 1064,
+  oracleKeysCapacity: 78,
+  nodeTimeout: 5176,
+  oracleKeysLen: 5204,
+  minLength: 5208,
+} as const;
+
+export type ChainOracleFields = {
+  queue: Buffer;
+  verified: boolean;
+  validUntil: bigint;
+  lastHeartbeat: bigint;
+  isOnQueue: boolean;
+  gatewayUrl: string;
+};
+
+export function parseChainQueue(data: Buffer): { oracleKeys: Buffer[]; nodeTimeout: bigint } {
+  if (data.length < SWITCHBOARD_QUEUE_LAYOUT.minLength || !data.subarray(0, 8).equals(SWITCHBOARD_QUEUE_DISCRIMINATOR)) {
+    throw new Error("Not a Switchboard queue account");
+  }
+  const length = data.readUInt32LE(SWITCHBOARD_QUEUE_LAYOUT.oracleKeysLen);
+  if (length > SWITCHBOARD_QUEUE_LAYOUT.oracleKeysCapacity) throw new Error("Switchboard queue length is unreadable");
+  const oracleKeys: Buffer[] = [];
+  for (let i = 0; i < length; i += 1) {
+    const start = SWITCHBOARD_QUEUE_LAYOUT.oracleKeys + i * 32;
+    oracleKeys.push(Buffer.from(data.subarray(start, start + 32)));
+  }
+  const nodeTimeout = data.readBigInt64LE(SWITCHBOARD_QUEUE_LAYOUT.nodeTimeout);
+  if (nodeTimeout < 0n) throw new Error("Switchboard queue timeout is unreadable");
+  return { oracleKeys, nodeTimeout };
+}
+
+export function parseChainOracle(data: Buffer): ChainOracleFields | null {
+  if (data.length < SWITCHBOARD_ORACLE_LAYOUT.minLength || !data.subarray(0, 8).equals(SWITCHBOARD_ORACLE_DISCRIMINATOR)) return null;
+  const uri = data.subarray(
+    SWITCHBOARD_ORACLE_LAYOUT.gatewayUri,
+    SWITCHBOARD_ORACLE_LAYOUT.gatewayUri + SWITCHBOARD_ORACLE_LAYOUT.gatewayUriLength,
+  );
+  const end = uri.indexOf(0);
+  let gatewayUrl = "";
+  try {
+    gatewayUrl = gatewayUrlFromBytes(end === -1 ? uri : uri.subarray(0, end));
+  } catch {
+    gatewayUrl = "";
+  }
+  return {
+    queue: Buffer.from(data.subarray(SWITCHBOARD_ORACLE_LAYOUT.queue, SWITCHBOARD_ORACLE_LAYOUT.queue + 32)),
+    verified: data[SWITCHBOARD_ORACLE_LAYOUT.verificationStatus] === SWITCHBOARD_ORACLE_VERIFIED,
+    validUntil: data.readBigInt64LE(SWITCHBOARD_ORACLE_LAYOUT.validUntil),
+    lastHeartbeat: data.readBigInt64LE(SWITCHBOARD_ORACLE_LAYOUT.lastHeartbeat),
+    isOnQueue: data[SWITCHBOARD_ORACLE_LAYOUT.isOnQueue] !== 0,
+    gatewayUrl,
+  };
+}
+
+/** On-chain randomness eligibility. Pull feed and live health are not required. */
+export function chainOracleCandidate(
+  oracle: PublicKey,
+  fields: ChainOracleFields,
+  queue: PublicKey,
+  nodeTimeout: bigint,
+  nowUnix: bigint,
+): OracleCandidate {
+  const heartbeatAge = nowUnix - fields.lastHeartbeat;
+  return {
+    oracle,
+    gatewayUrl: fields.gatewayUrl,
+    isOnQueue: fields.isOnQueue && fields.queue.equals(queue.toBuffer()),
+    isVerified: fields.verified,
+    heartbeatFresh: fields.lastHeartbeat > 0n && heartbeatAge >= -120n && heartbeatAge <= nodeTimeout,
+    quoteFresh: fields.validUntil > nowUnix,
+    liveHealthy: false,
+    lastHeartbeatUnix: Number(fields.lastHeartbeat),
+    validUntilUnix: Number(fields.validUntil),
+  };
+}
+
+async function inspectOraclesFromChain(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  const sbc = switchboard();
+  const queueInfo = await connection.getAccountInfo(sbc.queue, "confirmed");
+  if (!queueInfo || !queueInfo.owner.equals(sbc.programId)) throw new Error("Switchboard queue account not found");
+  const parsed = parseChainQueue(Buffer.from(queueInfo.data));
+  const oracleKeys = parsed.oracleKeys
+    .filter((key) => !key.equals(Buffer.alloc(32)))
+    .map((key) => new PublicKey(key));
+  if (!oracleKeys.length) throw new Error("No oracles found on queue");
+  const infos = await connection.getMultipleAccountsInfo(oracleKeys, "confirmed");
+  const nowUnix = BigInt(Math.floor(Date.now() / 1000));
+  const candidates = oracleKeys.flatMap((oracle, index) => {
+    const info = infos[index];
+    if (!info || !info.owner.equals(sbc.programId)) return [];
+    const fields = parseChainOracle(Buffer.from(info.data));
+    return fields ? [chainOracleCandidate(oracle, fields, sbc.queue, parsed.nodeTimeout, nowUnix)] : [];
+  });
+  if (!candidates.length) throw new Error("No Switchboard oracle account loaded");
+  return { inspection: { source: "chain", nodeTimeout: parsed.nodeTimeout.toString() }, candidates };
+}
+
 /** The trusted queue's randomness oracles as the SDK inspects them (uncached). */
-export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+async function inspectOraclesFromSdk(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
   const sb = await sdk();
   const prog = await switchboardProgram(connection);
   const queue = new sb.Queue(prog, switchboard().queue as any);
@@ -391,8 +601,65 @@ export async function inspectOracles(connection: Connection): Promise<{ inspecti
   return { inspection, candidates: (inspection.candidates || []).map(oracleCandidateFromInspection) };
 }
 
+/**
+ * The SDK aborts the whole queue when one member account does not load.
+ * Keep the members that did load. Eligibility stays the on-chain rule.
+ */
+async function inspectLoadedOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  const sb = await sdk();
+  const prog = await switchboardProgram(connection);
+  const queue = new sb.Queue(prog, switchboard().queue as any);
+  const queueData = await queue.loadData();
+  const keyCount = Number(queueData.oracleKeysLen);
+  if (!Number.isInteger(keyCount) || keyCount < 0) throw new Error("Switchboard queue length is unreadable");
+  const oracleKeys = queueData.oracleKeys.slice(0, keyCount);
+  const loaded = await sb.Oracle.loadMany(prog, oracleKeys);
+  const present = oracleKeys.flatMap((oracleKey: PublicKey, index: number) => {
+    const data = loaded[index];
+    return data ? [{ oracleKey, data }] : [];
+  });
+  if (!present.length) throw new Error("No Switchboard oracle account loaded");
+  // Live health is optional here: the failed SDK pass already tried it. An oracle
+  // that is verified and fresh on-chain remains eligible, matching the SDK fallback.
+  const raw = present.map((row: { oracleKey: PublicKey; data: any }) => sb.buildSolanaRandomnessOracleCandidate({
+    oracle: new sb.Oracle(prog, row.oracleKey),
+    data: row.data,
+    queueData,
+  }));
+  return { inspection: { candidates: raw, queueData }, candidates: raw.map(oracleCandidateFromInspection) };
+}
+
+export async function inspectOracles(connection: Connection): Promise<{ inspection: any; candidates: OracleCandidate[] }> {
+  // Chain bytes first, reading oracles that loaded from the queue account.
+  // Gateway health is not a commit requirement and its 10s timeout was the
+  // whole `commit` 503. The SDK decode is only a second opinion when the byte
+  // layout sees no fresh randomness oracle.
+  let chain: { inspection: any; candidates: OracleCandidate[] } | undefined;
+  try {
+    chain = await inspectOraclesFromChain(connection);
+    if (chain.candidates.map(forRandomnessSelection).some(oracleEligible)) return chain;
+  } catch (error) {
+    console.error("[vrf] chain oracle read failed:", oracleErrorText(error));
+  }
+  try {
+    const loaded = await inspectLoadedOracles(connection);
+    if (loaded.candidates.map(forRandomnessSelection).some(oracleEligible)) {
+      if (chain) console.warn("[vrf] byte layout saw no fresh oracle; SDK decode did");
+      return loaded;
+    }
+    return chain ?? loaded;
+  } catch (error) {
+    if (chain) return chain;
+    console.error("[vrf] oracle read failed:", oracleErrorText(error));
+    throw error;
+  }
+}
+
 async function refreshOracles(connection: Connection): Promise<void> {
   const { candidates } = await inspectOracles(connection);
+  const eligible = candidates.filter(oracleEligible).length;
+  const randomness = candidates.map(forRandomnessSelection).filter(oracleEligible).length;
+  console.log(`[vrf] oracles loaded=${candidates.length} eligible=${eligible} randomness=${randomness} ${oracleSelectionSummary(candidates)}`);
   oracleCache = { at: Date.now(), candidates };
 }
 
@@ -404,25 +671,31 @@ export async function selectOracle(connection: Connection): Promise<PublicKey> {
     try {
       await oracleRefresh;
     } catch (error) {
+      console.error("[vrf] oracle refresh failed:", oracleErrorText(error));
       if (!oracleCache || Date.now() - oracleCache.at > ORACLE_STALE_OK_MS) throw vrfUnavailable("VRF_ORACLE_UNAVAILABLE");
-      console.warn("[vrf] oracle refresh failed, using the cached list:", String((error as Error)?.message || error).slice(0, 200));
+      console.warn("[vrf] using the cached oracle list");
     }
   }
-  return pickOracle(oracleCache!.candidates);
+  return chooseOracle(oracleCache!.candidates);
 }
 
-/** Accounts every VRF commit instruction takes after its own accounts. */
-export async function vrfCommitAccounts(program: any, connection: Connection, slot: PoolSlot) {
-  const sbc = switchboard();
+/**
+ * Accounts a pack-opening commit takes after its own accounts. Lottery,
+ * exploration, forge and random reroll pass this same set into the same
+ * program commit. The instruction still has an oracle position; the program
+ * does not read it. The queue account already exists, so it fills that
+ * position. No oracle is selected and `AOF_RANDOMNESS` is not consulted.
+ */
+export function packPathCommitAccounts(_program: { programId: PublicKey }, slot: PoolSlot) {
   return {
     vrfSlot: slot.vrfSlot,
-    randomness: slot.randomness,
-    vrfAuthority: vrfAuthorityPda(program.programId),
-    queue: sbc.queue,
-    oracle: await selectOracle(connection),
     recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
-    switchboardProgram: sbc.programId,
   };
+}
+
+/** Accounts every pack-path VRF commit instruction takes after its own accounts. */
+export async function vrfCommitAccounts(program: any, _connection: Connection, slot: PoolSlot) {
+  return packPathCommitAccounts(program, slot);
 }
 
 export type RevealParams = { signature: number[]; recoveryId: number; value: number[] };
@@ -475,80 +748,28 @@ export function parseRevealResponse(json: any): RevealParams {
 
 const GATEWAY_TIMEOUT_MS = 10_000;
 
-/**
- * The oracle's signed reveal for `randomness`, as program reveal params plus
- * the Switchboard accounts of the reveal CPI. Asks the gateway of the oracle
- * Switchboard assigned at commit directly (no fixed delay: the settler waits
- * VRF_SETTLER_MIN_AGE_SLOTS, and a gateway that has not seen the seed slot yet
- * just fails the attempt, which is retried).
- */
-export async function vrfReveal(program: any, connection: Connection, randomness: PublicKey, _payer: PublicKey) {
-  const sbc = switchboard();
-  const info = await connection.getAccountInfo(randomness, "confirmed");
-  if (!info || !info.owner.equals(sbc.programId)) throw new Error("Randomness account not found");
-  const r = parseRandomness(info.data);
-  if (!r.queue.equals(sbc.queue)) throw new Error("Randomness account is not on the trusted queue");
-  if (r.revealSlot !== 0n) throw new Error("Randomness already revealed");
-  if (r.oracle.equals(PublicKey.default)) throw new Error("Randomness has no committed oracle");
-
-  const sb = await sdk();
-  const prog = await switchboardProgram(connection);
-  const oracleData: any = await new sb.Oracle(prog, r.oracle as any).loadData();
-  if (new PublicKey(oracleData.queue.toBase58()).toBase58() !== sbc.queue.toBase58()) {
-    throw new Error("Committed oracle serves another queue");
-  }
-  const gateway = gatewayUrlFromBytes(oracleData.gatewayUri);
-  const response = await fetch(`${gateway}/gateway/api/v1/randomness_reveal`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(revealRequestBody(randomness, r.seedSlothash, r.seedSlot, process.env.SWITCHBOARD_GATEWAY_RPC_URL || undefined)),
-    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Switchboard gateway ${new URL(gateway).host} HTTP ${response.status}: ${text.slice(0, 200)}`);
-  let json: unknown;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error("Switchboard gateway: response is not JSON");
-  }
-  const params = parseRevealResponse(json);
-  const accounts = {
-    vrfSlot: vrfSlotPda(program.programId, randomness),
-    randomness,
-    vrfAuthority: vrfAuthorityPda(program.programId),
-    oracle: r.oracle,
-    queue: sbc.queue,
-    stats: statsPda(r.oracle),
-    recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
-    rewardEscrow: rewardEscrowAddress(randomness),
-    wrappedSolMint: NATIVE_MINT,
-    programState: sbc.state,
-    switchboardProgram: sbc.programId,
+/** Reveal params for the five rooms. The program reads SlotHashes and ignores this signature. */
+export function packPathReveal(_program: any, vrfSlot: PublicKey) {
+  return {
+    params: { signature: Array(64).fill(0), recoveryId: 0, value: Array(32).fill(0) },
+    accounts: {
+      vrfSlot,
+      recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
+    },
   };
-  return { params, accounts };
+}
+
+export async function vrfReveal(program: any, _connection: Connection, vrfSlot: PublicKey, _payer: PublicKey) {
+  return packPathReveal(program, vrfSlot);
 }
 
 /** Accounts + args of `vrf_pool_add` for pool index `index` (core or quests program). */
 export async function vrfPoolAddAccounts(program: any, connection: Connection, index: number) {
-  const sbc = switchboard();
-  const randomness = vrfRandomnessPda(program.programId, index);
   const recentSlot = await connection.getSlot("finalized");
-  const lutSigner = lutSignerPda(randomness);
   return {
     recentSlot,
     accounts: {
-      vrfAuthority: vrfAuthorityPda(program.programId),
-      randomness,
-      vrfSlot: vrfSlotPda(program.programId, randomness),
-      rewardEscrow: rewardEscrowAddress(randomness),
-      queue: sbc.queue,
-      programState: sbc.state,
-      lutSigner,
-      lut: lutAddress(lutSigner, recentSlot),
-      wrappedSolMint: NATIVE_MINT,
-      switchboardProgram: sbc.programId,
-      addressLookupTableProgram: ADDRESS_LOOKUP_TABLE_PROGRAM_ID,
+      vrfSlot: vrfSlotPda(program.programId, index),
     },
   };
 }

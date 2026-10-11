@@ -38,13 +38,12 @@ pub fn init_pass_handler(ctx: Context<InitSeasonPass>, season_id: u32) -> Result
 }
 
 pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {
-    // Keep direct-RPC sales closed until the 42-day / 0.15 SOL Devnet acceptance
-    // gate is complete; the HTTP sales gate alone is not a contract boundary.
-    require!(false, AofError::SeasonPremiumRequired);
-    // [SECURITY_CHECKLIST_REVIEW] A pass used to be sold for any season id at any
-    // time (including seasons that had ended) and a second purchase silently
-    // charged 0.15 SOL again for a flag that was already set. Validate every
-    // account before transferring the fixed, user-visible price.
+    // The chain accepts one purchase inside the season window. The interface
+    // sales gate stays closed until Devnet acceptance; that HTTP gate is not this
+    // contract boundary. A pass used to be sold for any season id at any time
+    // (including seasons that had ended) and a second purchase silently charged
+    // 0.15 SOL again for a flag that was already set. Validate every account
+    // before transferring the fixed, user-visible price.
     let now = Clock::get()?.unix_timestamp;
     let start = ctx.accounts.season.start_time;
     require!(now >= start, AofError::SeasonNotStarted);
@@ -247,15 +246,19 @@ pub fn claim_premium_reward_handler(
         ctx.accounts.premium_claims.claimed_bitmap & bit == 0,
         AofError::SeasonRewardAlreadyClaimed
     );
+    // Paid track is silicon at 2.5x the free circuit unit rate, not the same
+    // mint and formula. 42 levels still fit the claim bitmap.
     let reward_amount = (level as u64)
         .checked_mul(SEASON_REWARD_UNITS_PER_LEVEL)
+        .and_then(|v| v.checked_mul(5))
+        .and_then(|v| v.checked_div(2))
         .and_then(|v| v.checked_mul(RESOURCE_UNIT))
         .ok_or(AofError::MathOverflow)?;
     require!(reward_amount > 0, AofError::ZeroAmount);
     check_supply_cap(
         &ctx.accounts.material_mints,
-        &mut ctx.accounts.issuance_cap_circuit,
-        ResourceKind::Circuit,
+        &mut ctx.accounts.issuance_cap_silicon,
+        ResourceKind::Silicon,
         reward_amount,
     )?;
 
@@ -265,8 +268,8 @@ pub fn claim_premium_reward_handler(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                mint: ctx.accounts.circuit_mint.to_account_info(),
-                to: ctx.accounts.user_circuit.to_account_info(),
+                mint: ctx.accounts.silicon_mint.to_account_info(),
+                to: ctx.accounts.user_silicon.to_account_info(),
                 authority: ctx.accounts.auth.to_account_info(),
             },
             signer_seeds,

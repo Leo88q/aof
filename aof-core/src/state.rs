@@ -597,7 +597,7 @@ pub struct LotteryTicketCounter {
 }
 
 /// [F-06] One Switchboard randomness account of the program-owned pool.
-/// seeds = [VRF_SLOT_SEED, randomness]. `lock` names the commit PDA that is
+/// seeds = [VRF_SLOT_SEED, index_le]. `lock` names the commit PDA that is
 /// waiting for this account's reveal; a slot serves one commit at a time.
 #[account]
 #[derive(InitSpace)]
@@ -761,6 +761,16 @@ pub struct SeasonXpClaimCursor {
     pub owner: Pubkey,
     pub season_id: u32,
     pub next_nonce: u32,
+    pub bump: u8,
+}
+
+/// The laboratory ending. The player pays the rent. Each seal burns one full
+/// set of components and mints one Soul Core; the count is the kept proof.
+#[account]
+#[derive(InitSpace)]
+pub struct LaboratoryFinale {
+    pub owner: Pubkey,
+    pub seals: u32,
     pub bump: u8,
 }
 

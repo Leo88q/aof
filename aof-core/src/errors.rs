@@ -264,15 +264,15 @@ pub enum AofError {
     InvalidRole,
     #[msg("Destination must be the owner's canonical associated token account")]
     NonCanonicalTokenAccount,
-    #[msg("Not a Switchboard randomness account of the trusted program")]
+    #[msg("Not the SlotHashes sysvar")]
     InvalidRandomnessAccount,
     #[msg("Randomness is not freshly committed (or already revealed)")]
     RandomnessNotFresh,
     #[msg("Randomness has not been revealed in this slot")]
     RandomnessNotRevealed,
-    #[msg("Switchboard randomness commit must precede this instruction in the same transaction")]
+    #[msg("Randomness commit is missing from this transaction")]
     RandomnessCommitMissing,
-    // [F-06] program-owned Switchboard pool (appended: existing codes must not move).
+    // Appended pool codes must not move.
     #[msg("VRF pool slot is busy with another commit")]
     VrfSlotBusy,
     #[msg("VRF pool slot is retired")]

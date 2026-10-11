@@ -1,7 +1,7 @@
 'use strict';
-// [F-06] Economic invariants of the Switchboard-settled mechanics, computed
-// from the Rust constants by scripts/economy/rng-ev.mjs (the same functions
-// that generate docs/ECONOMY_RNG_EV.md).
+// [F-06] Economic invariants of the slot-hash mechanics, computed from the
+// Rust constants by scripts/economy/rng-ev.mjs (the same functions that
+// generate docs/ECONOMY_RNG_EV.md). Drum is deleted and is not in the report.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -58,31 +58,27 @@ test('F-06 forge odds are well formed and get harder with the level', async () =
   assert.ok(prot.attempts <= plain.attempts, 'the protector cannot make reaching the top slower');
 });
 
-test('F-06 lottery and drum return at most what they take', async () => {
+test('F-06 lottery returns at most what it takes, and drum stays deleted', async () => {
   const ev = await load();
   const c = ev.readConstants();
   assert.equal(c.lottery.poolBps + c.lottery.devBps, 10_000);
   assert.ok(c.lottery.price > 0 && c.lottery.maxTickets >= 1);
   assert.ok(c.lottery.timeoutSeconds > c.lottery.salesSeconds, 'refunds open only after anyone could have drawn');
-  const drum = ev.drumStats(c);
-  assert.equal(ev.sum(c.drum.prizes.map(([w]) => w)), 10_000);
-  assert.ok(drum.rtp <= 1, `drum RTP ${drum.rtp} must not exceed 100%`);
-  assert.equal(Math.max(...c.drum.prizes.map(([, a]) => a)), c.drum.maxPrize);
+  for (const rel of [
+    'programs/aof-quests/src/instructions/drum',
+    'frontend/src/lib/drumTable.ts',
+    'aof_backend/src/routes/drum.ts',
+  ]) {
+    assert.equal(fs.existsSync(path.join(root, rel)), false, `${rel} returned`);
+  }
+  assert.equal(c.drum, undefined);
 });
 
-test('F-06 the drum odds shown to players are the odds the program pays', async () => {
+test('F-06 the reveal window fits inside SlotHashes and rent figures are the runtime ones', async () => {
   const ev = await load();
   const c = ev.readConstants();
-  const src = fs.readFileSync(path.join(root, 'frontend/src/lib/drumTable.ts'), 'utf8');
-  const shown = [...src.matchAll(/\{ weightBps: (\d+), amount: (\d+) \}/g)].map((m) => [Number(m[1]), Number(m[2])]);
-  assert.deepEqual(shown, c.drum.prizes, 'frontend/src/lib/drumTable.ts must mirror DRUM_PRIZES');
-  assert.equal(Number(/DRUM_SPIN_COST = (\d+);/.exec(src)[1]), c.drum.cost);
-});
-
-test('F-06 the reveal window outlasts the oracle and rent figures are the runtime ones', async () => {
-  const ev = await load();
-  const c = ev.readConstants();
-  assert.ok(c.vrfRefundAfterSlots >= 9_000, 'Switchboard honours reveals for ~1 h (9000 slots at 400 ms)');
+  assert.equal(c.vrfRefundAfterSlots, 432, 'retained constant; live refund is hash presence, not this boundary');
+  assert.ok(c.vrfRefundAfterSlots < 512);
   assert.equal(ev.rentExempt(82), 1_461_600, 'mint rent');
   assert.equal(ev.rentExempt(165), 2_039_280, 'token account rent');
   assert.equal(ev.TOOL_DATA_SPACE, 161, 'matches TOOL_DATA_SPACE (pinned by the Rust serialized_len test)');

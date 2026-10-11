@@ -49,7 +49,7 @@ r.get("/pending", async (req, res) => {
         mechanic: c.mechanic,
         commit: c.address.toBase58(),
         commitSlot: c.commitSlot,
-        phase: commitPhase(c.commitSlot, currentSlot),
+        phase: commitPhase(c.commitSlot, currentSlot, c.seedSlot),
         ageSlots: currentSlot - c.commitSlot,
       }));
     res.json({ currentSlot, pending });

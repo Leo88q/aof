@@ -78,14 +78,7 @@ python3 scripts/test-mint-cost-model.py
 ## Другие Solana-инструменты
 
 - **Squads / разделение ключей:** целесообразны для upgrade authority и treasury. Нельзя просто заменить `Config.authority` на multisig PDA и оставить `Keypair.fromSecretKey`: потребуется отдельный governance/execution flow и ограниченный operational signer.
-- **VRF:** выбрать проверяемый провайдер после проверки актуальных SDK/audits. Привязать request к user/commit/правилам, исключить reuse старого randomness, freeze odds на commit и сделать settlement permissionless после fulfillment. VRF без обязательного settlement всё ещё допускает selective abort. *Реализовано 2026-09-27 на Switchboard On-Demand:*
-  - request привязан к commit PDA;
-  - слот пула одноразовый на коммит;
-  - шансы замораживаются при commit;
-  - settlement permissionless и обязателен: сервис `vrf-settler` или сам игрок;
-  - возврат только после окна раскрытия.
-
-  См. `docs/VRF_SWITCHBOARD.md`.
+- **Случайность:** не внешний оракул. Исход — четыре будущих хеша слотов, которые читает сама программа. Коммит привязан к слоту пула, шансы замораживаются при оплате, раскрытие permissionless (`vrf-settler` или игрок). Пока хеши читаются, игрок не может забрать ставку возвратом. Если хеш выпал из SlotHashes, ставка уходит в казну. См. `docs/ECONOMY_RNG_EV.md`.
 - **Token-2022:** полезен для отдельных токенов, но transfer fees/hooks/permanent delegates меняют семантику. Не подключать ко всем NFT автоматически; нынешние `Account<TokenAccount>` и token CPIs не поддерживают такой переход.
 - **Priority fees/CU budget:** ограничены wallet guard; автоматический CU/priority estimator допустим только с hard caps и пользовательским лимитом расхода.
 - **ALT:** оптимизация размера, не цены rent и не самостоятельная мера безопасности.

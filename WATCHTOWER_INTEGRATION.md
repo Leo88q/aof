@@ -16,18 +16,19 @@
 
 Источники: `Anchor.toml` (`[programs.localnet]` == `[programs.devnet]`) и
 реестр `watchtower/addresses.json` (6 program crates этого репозитория).
-Статусы — честные: `reference-unverified`, `rpcVerifiedAt: null` — живой RPC-
-проверкой адреса НЕ проверялись (оператору — до прода); mainnet-версий
-программ нет.
+Статусы Devnet на 2026-10-08: `verified`, `rpcVerifiedAt: 2026-10-08`.
+`scripts/verify-programs.sh --require-bytecode` сопоставил локальные `.so`
+с байткодом в Devnet, код выхода `0`. Это не mainnet и не включение добычи.
+Mainnet-версий программ нет.
 
 | Symbolic key | Alias (crate) | Resolved id | Статус |
 |---|---|---|---|
-| `AOF_CORE_PROGRAM_ID` | aof_core | `okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
-| `4BhD6spJ…` | aof_market | `A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
-| `4fNKhVw2…` | aof_quests | `2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
-| `4rMWC1h9…` | aof_rebirth | `HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
-| `Gvbo9wDE…` | aof_liquidity | `Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
-| `6ZnnyKkv…` | aof_session_keys | `9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5` | localnet/devnet reference, RPC-проверка не выполнена, mainnet отсутствует |
+| `AOF_CORE_PROGRAM_ID` | aof_core | `okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
+| `4BhD6spJ…` | aof_market | `A3PRU6Z8GywzWxkS8rDGgqbobToknAuQya3ot6XvGBuY` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
+| `4fNKhVw2…` | aof_quests | `2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
+| `4rMWC1h9…` | aof_rebirth | `HHwA5u7oZUkP26ZWidB1tWZsztN2MRfF1iV29m3bbSKF` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
+| `Gvbo9wDE…` | aof_liquidity | `Fxwy8xBzzd2pLmWzfYZtwGnggS8L1Q9CfxHmZRB2WP6S` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
+| `6ZnnyKkv…` | aof_session_keys | `9CDRVYy9bxTv6yRqVXrafjpmByJoqWbRGzbDJnH1Yna5` | devnet bytecode matched 2026-10-08, mainnet отсутствует |
 | `CgInv111...` | aof_cginv | **нет адреса** (`programId: null`) | спекулятивная заглушка: crate `aof_cginv` в репозитории отсутствует; RPC-использование запрещено |
 | `STrEaSuRy111...` | aof_treasury | **нет адреса** (`programId: null`) | спекулятивная заглушка: отдельного treasury-программы нет; RPC-использование запрещено |
 

@@ -48,9 +48,15 @@ pub fn handler(ctx: Context<StartMining>, hours: u8) -> Result<()> {
     player.villagers_available -= 1;
 
     let now = Clock::get()?.unix_timestamp;
+    let speed = crate::instructions::collect_mining::enchant_slot_level(
+        &ctx.accounts.mint.key(),
+        crate::instructions::collect_mining::SPEED_ENCHANT_SLOT,
+        &ctx.remaining_accounts,
+    )?;
+    let wait = crate::instructions::collect_mining::mining_wait_hours(hours, speed)?;
     ctx.accounts.tool.is_mining = true;
     ctx.accounts.tool.mining_end = now
-        .checked_add((hours as i64) * 3600)
+        .checked_add((wait as i64) * 3600)
         .ok_or(AofError::MathOverflow)?;
     ctx.accounts.tool.last_mined_hours = hours;
     Ok(())

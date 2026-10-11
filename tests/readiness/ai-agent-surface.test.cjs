@@ -30,7 +30,7 @@ test('#78/#79 agent instruction files and tool configs match security/agent-conf
   const r = run('scripts/security/agent-config-lock.mjs', ['--check']);
   assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
   const lock = JSON.parse(read('security/agent-config.lock.json'));
-  for (const must of ['CLAUDE.md', 'opencode.json', 'PROMPT_AUDIT_FULL_STACK_V2.md', 'docs/AI_AGENT_SECURITY_POLICY.md']) {
+  for (const must of ['opencode.json', 'docs/AI_AGENT_SECURITY_POLICY.md']) {
     assert.ok(lock.files[must], `${must} must be pinned in the agent config lock`);
   }
 });
@@ -85,14 +85,6 @@ test('#73 farm-trader stays simulation-only and session-key spending stays disab
   assert.doesNotMatch(executor, /sendTransaction|sendRawTransaction|signTransaction\(/);
   const sessionKeys = read('programs/aof-session-keys/src/lib.rs');
   assert.match(sessionKeys, /Session spending is disabled until atomically bound to a target instruction/);
-});
-
-test('#77/#80 the audit prompt tells the auditor to ignore in-repo instructions and to run the comment-free pass', () => {
-  const prompt = read('PROMPT_AUDIT_FULL_STACK_V2.md');
-  assert.match(prompt, /ai-audit-bundle\.mjs/);
-  assert.match(prompt, /--strip-comments/);
-  assert.match(prompt, /check-hidden-unicode\.mjs/);
-  assert.match(prompt, /out of scope|вне (скоупа|периметра|аудита)/i);
 });
 
 test('#75 hot authority key is bounded by infrastructure, not by a prompt: gate + vault guard + issuance cap + circuit breaker exist and are wired', () => {

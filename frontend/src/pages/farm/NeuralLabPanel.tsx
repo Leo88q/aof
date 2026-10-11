@@ -9,6 +9,8 @@ import { handleTxResponse } from "../../lib/txFlow";
 import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { getMintAsync } from "../../lib/mints";
+import { readEconomyBalances } from "../../lib/economyBalances";
+import { formatResourceShortage, shortagesFromBalances } from "../../lib/resourceShortageMessage";
 import { UI_ICONS, resourceIcon } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 
@@ -35,6 +37,7 @@ export function NeuralLabPanel() {
   const [startingSynthesis, setStartingSynthesis] = useState(false);
   const [collectingTileIndex, setCollectingTileIndex] = useState<number | null>(null);
   const [seeder, setSeeder] = useState<{ mint: string; pubkey: string } | null>(null);
+  const [shortage, setShortage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!walletAddr) return;
@@ -72,10 +75,46 @@ export function NeuralLabPanel() {
     }
   }
 
+  useEffect(() => {
+    if (!walletAddr || selectedCell === null) {
+      setShortage(null);
+      return;
+    }
+    let alive = true;
+    Promise.all([
+      api.query.balances(walletAddr).catch(() => null),
+      api.energy.balance(walletAddr).catch(() => null),
+    ]).then(([raw, energy]) => {
+      if (!alive) return;
+      const current = energy && typeof energy.amount === "number" ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        readEconomyBalances(raw),
+        [{ resource: "NEURON", need: neuronAmount }],
+        current === null ? null : { current, need: 1 },
+      );
+      setShortage(missing && missing.length > 0 ? formatResourceShortage(language, missing) : null);
+    });
+    return () => { alive = false; };
+  }, [walletAddr, selectedCell, neuronAmount, language]);
+
   async function handleStartSynthesis() {
     if (selectedCell === null || !walletAddr) return;
     setStartingSynthesis(true);
     try {
+      const balances = readEconomyBalances(await api.query.balances(walletAddr).catch(() => null));
+      const energy = await api.energy.balance(walletAddr).catch(() => null);
+      const current = energy && typeof energy.amount === "number" ? energy.amount : null;
+      const missing = shortagesFromBalances(
+        balances,
+        [{ resource: "NEURON", need: neuronAmount }],
+        current === null ? null : { current, need: 1 },
+      );
+      if (missing && missing.length > 0) {
+        const text = formatResourceShortage(language, missing);
+        setShortage(text);
+        toast.show(text, "error", language);
+        return;
+      }
       const neuronMint = await getMintAsync("NEURON");
       if (!neuronMint) {
         toast.show(copy.missingNeuron, "error", language);
@@ -160,9 +199,10 @@ export function NeuralLabPanel() {
       <h3 className="text-parchment font-bold text-lg flex items-center gap-2"><img src={UI_ICONS.plant} alt="" className="w-5 h-5 object-contain" /> {copy.title}</h3>
 
       {loadError ? (
-        <p className="text-gold-400 text-sm text-center py-4">
-          {copy.networkUnavailable}
-        </p>
+        <div className="text-center py-4 space-y-2">
+          <p className="text-gold-400 text-sm">{copy.networkUnavailable}</p>
+          <button type="button" onClick={() => { setLoading(true); void loadTiles(); }} className="btn btn-primary">{copy.retry}</button>
+        </div>
       ) : (
       <>
       {tiles.length === 0 && <p className="text-straw text-sm text-center py-4">{copy.empty}</p>}
@@ -237,6 +277,7 @@ export function NeuralLabPanel() {
             <span className="text-parchment font-bold text-sm w-10">{neuronAmount}</span>
           </div>
           <p className="text-[10px] text-straw flex flex-wrap items-center gap-1 justify-center"><ResourceGlyph icon={resourceIcon("power") || ""} alt="" className="w-3.5 h-3.5" /> {copy.cost}: 1 {copy.energy} + {neuronAmount} <ResourceGlyph icon={resourceIcon("neuron") || ""} alt="" className="w-3.5 h-3.5" /></p>
+          {shortage && <p className="text-gold-400 text-xs text-center">{shortage}</p>}
           <button
             onClick={handleStartSynthesis}
             disabled={startingSynthesis}

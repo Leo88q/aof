@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "source": "historical source-level baseline; Anchor-generated confirmation pending (anchor build + git diff -- idls/)",
-  "note": "Исторический layout baseline сохраняет исходные имена и порядок до resource rename. STEP_C_RENAMES разрешает только перечисленные переименования без изменения typeSequence/size. Последующие additions должны быть явно закреплены в approvedAdditions: точный discriminator инструкции, layout нового аккаунта и только appended error variants; прежние инструкции и коды ошибок остаются неизменными.",
+  "note": "Исторический layout baseline сохраняет исходные имена и порядок до resource rename. STEP_C_RENAMES разрешает только перечисленные переименования без изменения typeSequence/size. Последующие additions должны быть явно закреплены в approvedAdditions: точный discriminator инструкции, layout нового аккаунта и только appended error variants; прежние инструкции и коды ошибок остаются неизменными. Удалённые механики перечисляются в approvedRemovals и не возвращаются.",
   "resourceKind": [
     "Data",
     "Circuit",
@@ -3765,6 +3765,10 @@
         {
           "name": "claim_premium_season_reward",
           "discriminator": "e8218c145fee48c7"
+        },
+        {
+          "name": "seal_laboratory",
+          "discriminator": "2dfef80fa19ad569"
         }
       ],
       "accounts": [
@@ -3872,6 +3876,31 @@
             "u8"
           ],
           "size": 53
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "LaboratoryFinale",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "seals",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "u32",
+            "u8"
+          ],
+          "size": 45
         }
       ],
       "errors": {
@@ -3887,6 +3916,125 @@
           "InvalidSellerFeeBasisPoints"
         ]
       }
+    },
+    "aof_quests": {
+      "instructions": [
+        {
+          "name": "challenge_close",
+          "discriminator": "48d927e19b4bf540"
+        },
+        {
+          "name": "challenge_claim",
+          "discriminator": "e7d53eab3238a83f"
+        },
+        {
+          "name": "claim_daily",
+          "discriminator": "0de2999a1ba86f67"
+        },
+        {
+          "name": "claim_comeback",
+          "discriminator": "07c062277bf140a6"
+        },
+        {
+          "name": "visit_neighbor",
+          "discriminator": "7a2f9ca034f89bc8"
+        },
+        {
+          "name": "guild_deposit",
+          "discriminator": "9b129d914e8ad39f"
+        },
+        {
+          "name": "prove_quest_progress",
+          "discriminator": "2da79b75fd212597"
+        }
+      ],
+      "accounts": [
+        {
+          "file": "programs/aof-quests/src/instructions/engagement.rs",
+          "name": "PlayerEngagement",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "user",
+              "type": "Pubkey"
+            },
+            {
+              "name": "last_daily_day",
+              "type": "i64"
+            },
+            {
+              "name": "streak",
+              "type": "u16"
+            },
+            {
+              "name": "best_streak",
+              "type": "u16"
+            },
+            {
+              "name": "last_comeback_day",
+              "type": "i64"
+            },
+            {
+              "name": "neighbor_day",
+              "type": "i64"
+            },
+            {
+              "name": "neighbor_visits",
+              "type": "u8"
+            },
+            {
+              "name": "guild_deposited",
+              "type": "u64"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "i64",
+            "u16",
+            "u16",
+            "i64",
+            "i64",
+            "u8",
+            "u64",
+            "u8"
+          ],
+          "size": 78
+        }
+      ]
+    },
+    "aof_session_keys": {
+      "instructions": [
+        {
+          "name": "session_execute",
+          "discriminator": "305a87a582e62e15"
+        }
+      ]
+    }
+  },
+  "approvedRemovals": {
+    "aof_quests": {
+      "instructions": [
+        "init_potato_bank",
+        "set_potato_bank_paused",
+        "potato_spin_commit",
+        "potato_spin_reveal",
+        "potato_spin_expire",
+        "drum_commit",
+        "drum_reveal",
+        "drum_expire",
+        "vrf_pool_add",
+        "vrf_pool_set_retired"
+      ],
+      "accounts": [
+        "DrumCommit",
+        "VrfSlot",
+        "PotatoCommit",
+        "PotatoBank"
+      ]
     }
   }
 }

@@ -15,6 +15,8 @@ import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { WeatherRecorder } from "../../components/farm/WeatherRecorder";
 import { forecastFromDayId } from "../../lib/weather";
+import { stationLastCollectedAt } from "./wellReadings";
+import { WellHall } from "./WellHall";
 
 const WEATHER_RATES = {
   drought: { icon: UI_ICONS.weatherBlackout, rate: 0, color: "#E2685F" },
@@ -55,20 +57,24 @@ export function WellPanel() {
     // больше не показывают разные состояния одного аккаунта.
     const [snap, gridState, mint] = await Promise.all([
       fetchWeatherSnapshot(),
-      api.query.gridState(walletAddr).catch(() => null),
+      api.query.gridState(walletAddr).then((state: any) => (state && state.exists !== false ? state : null)).catch(() => null),
       getMintAsync("POWER"),
     ]);
     // Погода и ставка колодца приходят из lib/weather.ts, поэтому панель и
     // чип нагрузки в шапке всегда показывают одно и то же состояние.
     setSnapshot(snap ?? null);
-    setWeather(snap ? { weather: snap.weatherIndex } : null);
+    // A day-rule reading is not the WeatherState account. Collect requires that account.
+    setWeather(snap && snap.weatherAccountPresent !== false ? { weather: snap.weatherIndex } : null);
     setWell(gridState);
     setPowerMint(mint);
   }
 
   useEffect(() => {
     loadState();
-    const refresh = setInterval(loadState, 15000);
+    const refresh = setInterval(() => {
+      if (document.hidden) return;
+      void loadState();
+    }, 15000);
     return () => {
       clearInterval(refresh);
     };
@@ -109,13 +115,14 @@ export function WellPanel() {
   }
 
   if (!walletAddr) {
-    return <div lang={language}><Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3><p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p></Card></div>;
+    return <div lang={language}><WellHall language={language} active={false} lastCollectedAt={null} /><Card className="p-4"><h3 className="text-parchment font-bold text-lg flex items-center gap-2"><ResourceGlyph icon={UI_ICONS.gridStation} alt="" className="w-5 h-5" /> {copy.station}</h3><p className="text-straw text-sm text-center py-4">{copy.connectWallet}</p></Card></div>;
   }
 
   const forecast = typeof snapshot?.dayId === "number" ? forecastFromDayId(snapshot.dayId, 6) : [];
 
   return (
     <div lang={language}>
+    <WellHall language={language} active={Boolean(well)} lastCollectedAt={stationLastCollectedAt(well)} />
     <WeatherRecorder
       dayId={typeof snapshot?.dayId === "number" ? snapshot.dayId : null}
       weatherType={snapshot?.type ?? null}

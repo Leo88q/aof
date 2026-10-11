@@ -20,6 +20,8 @@ export interface GuardResult {
     tokenOutflows?: Record<string, number>;
     programsInvoked?: string[];
   };
+  /** Original guard exception. The card keeps a generic sentence; the trap shows this. */
+  cause?: string;
 }
 
 export interface GuardConfig {
@@ -39,6 +41,12 @@ const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+const RECENT_BLOCKHASHES_SYSVAR = "SysvarRecentB1ockHashes11111111111111111111";
+/** Public upgrade authority. A player may refund only the exact nonce-account
+ * rent to this address, never an arbitrary SOL transfer. */
+export const GAME_OPERATOR = "C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN";
+const NONCE_ACCOUNT_LENGTH = 80;
+const MAX_NONCE_RENT_LAMPORTS = 2_000_000;
 
 const SAFE_PROGRAMS = new Set([
   SYSTEM_PROGRAM_ID,           // System Program
@@ -60,14 +68,19 @@ const AOF_PROGRAMS = [
   "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx", // core
 ];
 
-// [F-06] Switchboard On-Demand (mainnet, devnet). The game programs CPI it to
-// commit/reveal their own randomness accounts, so it shows up in simulation
-// logs; a TOP-LEVEL Switchboard instruction is never built for a player and is
-// rejected by the instruction policy below.
+// [F-06] Switchboard program ids. Pack-path commit and reveal do not CPI them.
+// Pool init still does, and the instruction account lists still name the
+// program, so it can show up in simulation logs. A top-level Switchboard
+// instruction is never built for a player and is rejected below.
 export const SWITCHBOARD_PROGRAMS = [
   "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv",
   "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2",
 ];
+
+// Metaplex Token Metadata. Pack and reroll reveal CPI it to create immutable
+// tool metadata, so it appears in simulation logs. A top-level call is never
+// built for a player and is rejected below.
+export const TOKEN_METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
 // Известные скам/MEV программы (расширять по мере обнаружения)
 const KNOWN_SCAM_PROGRAMS = new Set([
@@ -80,8 +93,9 @@ const DEFAULT_CONFIG: GuardConfig = {
   maxLamportsSpent: 100_000, // 0.0001 SOL максимум на fees
   maxTokenOutflows: {},
   // Safe by default: without an explicit allowlist only the six game programs
-  // (plus their Switchboard CPI) may appear, never "any program that simulates".
-  allowedPrograms: [...AOF_PROGRAMS, ...SWITCHBOARD_PROGRAMS],
+  // (plus their Switchboard and Token Metadata CPIs) may appear, never "any
+  // program that simulates".
+  allowedPrograms: [...AOF_PROGRAMS, ...SWITCHBOARD_PROGRAMS, TOKEN_METADATA_PROGRAM_ID],
   blockedPrograms: Array.from(KNOWN_SCAM_PROGRAMS),
   blockedAddresses: [],
 };
@@ -210,7 +224,8 @@ export async function guardTransaction(
       ...instructions.map((instruction) => instruction.programId),
       ...extractPrograms(logs),
     ]));
-    const lamportsSpent = estimateLamportsSpent(instructions, user);
+    const lamportsSpent = Math.max(0, estimateLamportsSpent(instructions, user) -
+      await nonceRentReimbursement(instructions, user, connection));
     const tokenOutflows = estimateTokenOutflows(instructions, user);
 
     // 3. The fee payer must be the wallet that is about to sign. This avoids
@@ -313,11 +328,13 @@ export async function guardTransaction(
   } catch (e: unknown) {
     // Preserve the fee-specific stop without exposing raw RPC/program errors.
     const feeError = e instanceof Error && e.message === "Network fee unavailable or exceeds wallet fee limit";
+    const cause = e instanceof Error ? e.message : String(e);
     return {
       safe: false,
       risk: "HIGH",
       reason: feeError ? copy.feeFailed : copy.checkFailed,
       warnings: [copy.simulationError],
+      cause,
     };
   }
 }
@@ -461,10 +478,16 @@ function readU64(data: Uint8Array, offset: number): number | null {
   return value;
 }
 
+function isPlayerNonceAdvance(ix: GuardInstruction | undefined, user: PublicKey): boolean {
+  return !!ix && ix.programId === SYSTEM_PROGRAM_ID && readU32(ix.data, 0) === 4 &&
+    ix.data.length === 4 && ix.keys[2]?.equals(user) === true &&
+    ix.keys[1]?.toBase58() === RECENT_BLOCKHASHES_SYSVAR;
+}
+
 /** Standard program IDs are NOT safe instructions. In particular Approve,
- * SetAuthority, CloseAccount, nonce and Token-2022 extension instructions must
- * never slip through simply because the token/system program was allowlisted.
- * Only operations actually emitted by our builders are accepted here. */
+ * SetAuthority, CloseAccount, nonce withdrawal and Token-2022 extension
+ * instructions must never slip through simply because the token/system program
+ * was allowlisted. Only operations actually emitted by our builders are accepted. */
 function validateInstructionPolicy(instructions: GuardInstruction[], user: PublicKey, cfg: GuardConfig): void {
   let creationRent = 0;
   let atas = 0;
@@ -477,8 +500,12 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
     if (SWITCHBOARD_PROGRAMS.includes(ix.programId)) {
       throw new Error("Switchboard may only be invoked by the game program, never directly");
     }
+    if (ix.programId === TOKEN_METADATA_PROGRAM_ID) {
+      throw new Error("Token Metadata may only be invoked by the game program, never directly");
+    }
     if (ix.programId === SYSTEM_PROGRAM_ID) {
       const opcode = readU32(ix.data, 0);
+      if (opcode === 4 && instructions[0] === ix && isPlayerNonceAdvance(ix, user)) continue;
       if (opcode === 2 && ix.data.length === 12 && ix.keys[0]?.equals(user)) continue;
       // Only an 82-byte classic SPL mint may be allocated by prep-mint.
       if (opcode !== 0 || ix.data.length !== 52 || !ix.keys[0]?.equals(user) ||
@@ -523,6 +550,25 @@ function validateInstructionPolicy(instructions: GuardInstruction[], user: Publi
       initialized.size !== created.length || creationRent > (cfg.maxAccountCreationLamports ?? 5_000_000)) {
     throw new Error("Unexpected mint allocation or excessive rent");
   }
+}
+
+async function nonceRentReimbursement(
+  instructions: GuardInstruction[],
+  user: PublicKey,
+  connection: Pick<Connection, "getMinimumBalanceForRentExemption">,
+): Promise<number> {
+  const transfers = instructions.filter((ix) =>
+    ix.programId === SYSTEM_PROGRAM_ID && readU32(ix.data, 0) === 2 && ix.data.length === 12 &&
+    ix.keys[0]?.equals(user) && ix.keys[1]?.toBase58() === GAME_OPERATOR);
+  if (transfers.length === 0) return 0;
+  if (!isPlayerNonceAdvance(instructions[0], user) || transfers.length !== 1) {
+    throw new Error("Unexpected operator transfer");
+  }
+  const amount = readU64(transfers[0].data, 4) || 0;
+  if (amount <= 0 || amount > MAX_NONCE_RENT_LAMPORTS) throw new Error("Unexpected operator transfer");
+  const rent = await connection.getMinimumBalanceForRentExemption(NONCE_ACCOUNT_LENGTH);
+  if (amount !== rent) throw new Error("Unexpected operator transfer");
+  return amount;
 }
 
 /** Sum explicit System Program transfers whose source is the connected wallet. */
@@ -576,6 +622,7 @@ export function getAofGuardConfig(gameProgramId?: string): GuardConfig {
     ...(gameProgramId ? [gameProgramId] : []),
     ...Array.from(SAFE_PROGRAMS),
     ...SWITCHBOARD_PROGRAMS,
+    TOKEN_METADATA_PROGRAM_ID,
   ]));
   return {
     maxLamportsSpent: 500_000, // explicit direct SOL outflow, not a fee guess

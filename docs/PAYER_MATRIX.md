@@ -3,7 +3,7 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **96**; нарушают принцип (долг до деплоя): **0**.
+Инициализаций аккаунтов: **91**; нарушают принцип (долг до деплоя): **0**.
 
 ## Все инициализации
 
@@ -68,6 +68,7 @@
 | aof_core | RerollRandomReveal | new_mint | Mint | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
 | aof_core | RerollRandomReveal | new_token | TokenAccount | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
 | aof_core | RerollRandomReveal | new_tool_data | ToolData | init | cranker (оператор) | player | cranker-deposit | ok | игрок платит tool_settlement_rent в deposit_lamports на коммите (vrf.rs:545, pack_open_commit.rs:26) | settlement::reimburse_settler возвращает rent поселенцу в той же транзакции (settlement.rs:67) |
+| aof_core | SealLaboratory | finale | LaboratoryFinale | init_if_needed | user | player | player | ok | — | — |
 | aof_core | SetToolMetadataUris | tool_metadata_registry | ToolMetadataRegistry | init_if_needed | authority (оператор) | global | operator | ok | — | — |
 | aof_core | StartExplorationCommit | exploration_commit | ExplorationCommit | init | user | player | player | ok | — | — |
 | aof_core | StartExplorationCommit | exploration_state | ExplorationState | init_if_needed | user | player | player | ok | — | — |
@@ -87,19 +88,13 @@
 | aof_market | InitConfig | config | MarketConfig | init | authority (оператор) | global | operator | ok | — | — |
 | aof_market | InitPool | pool | HotMarketPool | init | authority (оператор) | global | operator | ok | — | — |
 | aof_quests | AchievementUnlock | achievement_record | AchievementRecord | init | user | player | player | ok | — | — |
-| aof_quests | ChallengeContribute | contribution | ChallengeContribution | init | user | player | player | ok | — | — |
+| aof_quests | ChallengeContribute | contribution | ChallengeContribution | init_if_needed | user | player | player | ok | — | — |
 | aof_quests | ChallengeInit | challenge_round | ChallengeRound | init | authority (оператор) | global | operator | ok | — | — |
-| aof_quests | DrumCommitCtx | drum_commit | DrumCommit | init | user | player | player | ok | — | — |
-| aof_quests | DrumExpire | user_mascot | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
-| aof_quests | DrumReveal | user_mascot | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
-| aof_quests | InitMindBank | mind_bank | MindBank | init | authority (оператор) | global | operator | ok | — | — |
-| aof_quests | InitMindBank | mind_vault | TokenAccount | init | authority (оператор) | global | operator | ok | — | — |
+| aof_quests | EngagementAccounts | engagement | PlayerEngagement | init_if_needed | user | player | player | ok | — | — |
 | aof_quests | InitQuestConfig | quest_config | QuestConfig | init | authority (оператор) | global | operator | ok | — | — |
-| aof_quests | MindSpinCommit | mind_commit | MindCommit | init | user | player | player | ok | — | — |
-| aof_quests | MindSpinExpire | user_mind | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
-| aof_quests | MindSpinReveal | user_mind | TokenAccount | init_if_needed | cranker (оператор) | player | cranker-deposit | ok | игрок вносит стоимость заранее собственным действием на коммите — ATA создаётся им же | возврат не нужен: ветка init не выполняется, lamports не тратятся |
+| aof_quests | NeighborVisit | engagement | PlayerEngagement | init_if_needed | user | player | player | ok | — | — |
+| aof_quests | ProveQuestProgress | quest_progress | QuestProgress | init_if_needed | user | player | player | ok | — | — |
 | aof_quests | QuestInit | quest_template | QuestTemplate | init | authority (оператор) | global | operator | ok | — | — |
-| aof_quests | QuestVrfPoolAdd | vrf_slot | VrfSlot | init | authority (оператор) | global | operator | ok | — | — |
 | aof_rebirth | DoRebirth | rebirth_record | RebirthRecord | init_if_needed | user | player | player | ok | — | — |
 | aof_rebirth | InitRebirthConfig | rebirth_config | RebirthConfig | init | authority (оператор) | global | operator | ok | — | — |
 | aof_session_keys | InitSkConfig | config | SkConfig | init | authority (оператор) | global | operator | ok | — | — |

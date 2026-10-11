@@ -1,11 +1,11 @@
 /**
- * [F-06] VRF settler: settles every Switchboard-backed commit of aof-core
- * (packs, random reroll, exploration, forge, lottery draw) and aof-quests
- * (Drum of Luck).
+ * [F-06] VRF settler: settles pack, random reroll, exploration, forge and
+ * lottery draw through the same reveal as pack opening, plus aof-quests
+ * (Drum of Luck), which was not moved onto that path.
  *
  * For each pending commit read from chain:
- *   - inside the reveal window  -> fetch the oracle's signed value (Switchboard
- *     gateway) and send the program's permissionless reveal;
+ *   - inside the reveal window  -> send the program's permissionless reveal
+ *     (the five pack-path rooms do not call an oracle gateway);
  *   - after the window          -> send the permissionless refund.
  * The two windows never overlap on-chain, so this worker cannot pick between
  * outcomes, and a crash or race only delays settlement: anyone (the player's
@@ -93,7 +93,8 @@ async function settle(c: PendingCommit, currentSlot: number): Promise<void> {
   const now = Date.now();
   if ((nextAttempt.get(key) || 0) > now) return;
   if (currentSlot - c.commitSlot < STANDBY_SLOTS) return; // the primary settler's turn
-  const phase = commitPhase(c.commitSlot, currentSlot);
+  const phase = commitPhase(c.commitSlot, currentSlot, c.seedSlot);
+  if (phase === "waiting") return;
   if (phase === "revealable" && currentSlot - c.seedSlot < MIN_AGE_SLOTS) return;
   nextAttempt.set(key, now + RETRY_MS);
   try {

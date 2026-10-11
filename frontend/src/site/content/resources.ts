@@ -40,7 +40,7 @@ export const resources: Resource[] = [
 
   { id: 'model', slug: 'model', name: homeResourceNames.ru.model, category: 'chain', status: 'live',
     lead: resourceLeads.ru.model,
-    relatedMechanics: ['farm', 'energy'], relatedResources: ['signal', 'circuit'] },
+    relatedMechanics: ['farm', 'craft'], relatedResources: ['signal', 'soulCore'] },
 
   { id: 'power', slug: 'power', name: homeResourceNames.ru.power, category: 'base', status: 'live',
     lead: resourceLeads.ru.power,
@@ -53,7 +53,7 @@ export const resources: Resource[] = [
 
   { id: 'purpleCore', slug: 'purple-core', name: homeResourceNames.ru.purpleCore, category: 'rare', status: 'live',
     lead: resourceLeads.ru.purpleCore,
-    relatedMechanics: ['mine', 'craft', 'drum'], relatedResources: ['quantumFluid'] },
+    relatedMechanics: ['mine', 'craft', 'lottery'], relatedResources: ['quantumFluid'] },
 
   { id: 'redCore', slug: 'red-core', name: homeResourceNames.ru.redCore, category: 'rare', status: 'live',
     lead: resourceLeads.ru.redCore,
@@ -70,7 +70,7 @@ export const resources: Resource[] = [
 
   { id: 'amberQuartz', slug: 'amber-quartz', name: homeResourceNames.ru.amberQuartz, category: 'rare', status: 'live',
     lead: resourceLeads.ru.amberQuartz,
-    relatedMechanics: ['mine'], relatedResources: [] },
+    relatedMechanics: ['craft'], relatedResources: ['photonBit', 'soulCore'] },
 
   // ── Chips ──
   { id: 'quantumBit', slug: 'quantum-bit', name: homeResourceNames.ru.quantumBit, category: 'rare', status: 'live',
@@ -83,7 +83,7 @@ export const resources: Resource[] = [
 
   { id: 'photonBit', slug: 'photon-bit', name: homeResourceNames.ru.photonBit, category: 'rare', status: 'live',
     lead: resourceLeads.ru.photonBit,
-    relatedMechanics: ['craft'], relatedResources: ['clearQuartz'] },
+    relatedMechanics: ['craft'], relatedResources: ['clearQuartz', 'amberQuartz'] },
 
   { id: 'bioChip', slug: 'bio-chip', name: homeResourceNames.ru.bioChip, category: 'rare', status: 'live',
     lead: resourceLeads.ru.bioChip,
@@ -92,32 +92,32 @@ export const resources: Resource[] = [
   // ── Fluids ──
   { id: 'cryoFluid', slug: 'cryo-fluid', name: homeResourceNames.ru.cryoFluid, category: 'consumable', status: 'live',
     lead: resourceLeads.ru.cryoFluid,
-    relatedMechanics: ['craft'], relatedResources: ['quantumBit'] },
+    relatedMechanics: ['craft'], relatedResources: ['quantumBit', 'soulCore'] },
 
   { id: 'voltFluid', slug: 'volt-fluid', name: homeResourceNames.ru.voltFluid, category: 'consumable', status: 'live',
     lead: resourceLeads.ru.voltFluid,
-    relatedMechanics: ['craft'], relatedResources: ['neuralChip'] },
+    relatedMechanics: ['craft'], relatedResources: ['neuralChip', 'soulCore'] },
 
   { id: 'bioFluid', slug: 'bio-fluid', name: homeResourceNames.ru.bioFluid, category: 'consumable', status: 'live',
     lead: resourceLeads.ru.bioFluid,
-    relatedMechanics: ['craft'], relatedResources: ['circuit', 'neuron'] },
+    relatedMechanics: ['craft'], relatedResources: ['circuit', 'neuron', 'soulCore'] },
 
   { id: 'nanoFluid', slug: 'nano-fluid', name: homeResourceNames.ru.nanoFluid, category: 'consumable', status: 'live',
     lead: resourceLeads.ru.nanoFluid,
-    relatedMechanics: ['craft'], relatedResources: ['roseQuartz'] },
+    relatedMechanics: ['craft'], relatedResources: ['roseQuartz', 'soulCore'] },
 
   { id: 'quantumFluid', slug: 'quantum-fluid', name: homeResourceNames.ru.quantumFluid, category: 'consumable', status: 'live',
     lead: resourceLeads.ru.quantumFluid,
-    relatedMechanics: ['craft'], relatedResources: ['purpleCore', 'bioChip'] },
+    relatedMechanics: ['craft'], relatedResources: ['purpleCore', 'bioChip', 'soulCore'] },
 
   // ── Special ──
   { id: 'mind', slug: 'mind', name: homeResourceNames.ru.mind, category: 'collab', status: 'live',
     lead: resourceLeads.ru.mind,
-    relatedMechanics: ['npc', 'craft'], relatedResources: ['soulCore'] },
+    relatedMechanics: ['craft'], relatedResources: ['dataset'] },
 
   { id: 'soulCore', slug: 'soul-core', name: homeResourceNames.ru.soulCore, category: 'social', status: 'live',
     lead: resourceLeads.ru.soulCore,
-    relatedMechanics: ['collectors'], relatedResources: ['mind'] },
+    relatedMechanics: ['farm', 'craft'], relatedResources: ['model', 'amberQuartz'] },
 ];
 
 export const resourcesBySlug = new Map(resources.map(r => [r.slug, r]));

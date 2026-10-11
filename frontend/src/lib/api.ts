@@ -1,6 +1,7 @@
 import { humanizeVrfError } from "./vrfErrors";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import { humanizeApiError, isFailClosedCode } from "./availability";
+import { formatResourceShortage, sanitizeShortages } from "./resourceShortageMessage";
 import { apiErrorCopy } from "../i18n/apiErrorCopy";
 import { fetchApi } from "./apiFetch";
 
@@ -44,6 +45,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/chain/weather/crank", subject: "chain_weather_crank", field: "cranker" },
   { path: "/chain/grid/collect", subject: "chain_grid_collect", field: "user" },
   { path: "/chain/recipe/craft", subject: "chain_recipe_craft", field: "user" },
+  { path: "/chain/finale/seal", subject: "chain_finale_seal", field: "user" },
   { path: "/craft-order/create", subject: "craft_order_create", field: "creator" },
   { path: "/craft-order/fulfill", subject: "craft_order_fulfill", field: "fulfiller" },
   { path: "/craft-order/cancel", subject: "craft_order_cancel", field: "creator" },
@@ -114,14 +116,17 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/liquidity/withdraw", subject: "liquidity_withdraw", field: "user" },
   { path: "/forge/commit", subject: "forge_commit", field: "user" },
   { path: "/forge/reveal", subject: "forge_reveal", field: "user" },
-  { path: "/drum/commit", subject: "drum_commit", field: "user" },
-  { path: "/drum/reveal", subject: "drum_reveal", field: "user" },
+  { path: "/engagement/daily", subject: "engagement_daily", field: "user" },
+  { path: "/engagement/comeback", subject: "engagement_comeback", field: "user" },
+  { path: "/engagement/neighbor", subject: "engagement_neighbor", field: "user" },
+  { path: "/engagement/guild", subject: "engagement_guild", field: "user" },
+  { path: "/engagement/quest-progress", subject: "engagement_quest", field: "user" },
   { path: "/exploration/start/commit", subject: "exploration_commit", field: "user" },
   { path: "/exploration/reveal", subject: "exploration_reveal", field: "user" },
   { path: "/exploration/upgrade-tier", subject: "exploration_upgrade_tier", field: "user" },
 ];
 
-async function parseApiResponse(res: Response): Promise<any> {
+async function parseApiResponse(res: Response, options?: { allowNull?: boolean }): Promise<any> {
   const contentType = res.headers.get("content-type") || "";
   const isJson = contentType.includes("application/json");
 
@@ -146,6 +151,13 @@ async function parseApiResponse(res: Response): Promise<any> {
     // prose is not a trusted locale string (and may contain private diagnostics).
     // Preserve raw on error.code for diagnostics and fail-closed decisions.
     const raw = String(message);
+    if (raw === "INSUFFICIENT_RESOURCES") {
+      const missing = sanitizeShortages(data?.missing);
+      const error = new Error(formatResourceShortage(getApiErrorLanguage(), missing)) as Error & { code?: string; missing?: unknown };
+      error.code = raw;
+      error.missing = missing;
+      throw error;
+    }
     const localized = humanizeVrfError(humanizeApiError(raw, getApiErrorLanguage()), getApiErrorLanguage());
     const error = new Error(localized === raw
       ? apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)
@@ -156,7 +168,9 @@ async function parseApiResponse(res: Response): Promise<any> {
   }
 
   if (data === null) {
-    // Even a 2xx with no usable JSON is not evidence of a successful action.
+    // A missing process PDA is valid empty state for the two reads that opt in.
+    // Every other 2xx with no usable JSON is still not a successful action.
+    if (options?.allowNull) return null;
     const error = new Error(apiErrorCopy[getApiErrorLanguage()].unexpected(res.status)) as Error & { code?: string };
     error.code = `NON_JSON_RESPONSE_${res.status}`;
     throw error;
@@ -209,9 +223,9 @@ async function del(path: string, body: Record<string, any> = {}): Promise<any> {
   return parseApiResponse(res);
 }
 
-async function get(path: string): Promise<any> {
+async function get(path: string, options?: { allowNull?: boolean }): Promise<any> {
   const res = await fetchApi(`${BASE}${path}`);
-  return parseApiResponse(res);
+  return parseApiResponse(res, options);
 }
 
 export const api = {
@@ -238,12 +252,14 @@ export const api = {
     rarityCounter: (idx: number) => get(`/query/rarity-counter/${idx}`),
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
+    laboratoryFinale: (owner: string) => get(`/query/laboratory-finale/${owner}`),
+    soulCoreSupply: () => get(`/query/soul-core-supply`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
     collector: (mint: string) => get(`/query/collector/${mint}`),
     weatherState: () => get("/query/weather-state"),
-    gridState: (owner: string) => get(`/query/grid-state/${owner}`),
-    signalState: (owner: string) => get(`/query/signal-state/${owner}`),
-    modelState: (owner: string) => get(`/query/model-state/${owner}`),
+    gridState: (owner: string) => get(`/query/grid-state/${owner}`, { allowNull: true }),
+    signalState: (owner: string) => get(`/query/signal-state/${owner}`, { allowNull: true }),
+    modelState: (owner: string) => get(`/query/model-state/${owner}`, { allowNull: true }),
     tool: (mint: string) => get(`/query/tool/${mint}`),
     myTools: (owner: string) => get(`/query/my-tools/${owner}`),
     friendFarm: (address: string) => get(`/query/friend-farm/${address}`),
@@ -332,6 +348,7 @@ export const api = {
     weatherCrank: (v: any) => post("/chain/weather/crank", v),
     // Мгновенный крафт (гемы/баночки)
     craftRecipe: (v: any) => post("/chain/recipe/craft", v),
+    sealLaboratory: (v: any) => post("/chain/finale/seal", v),
   },
 
   collectors: {
@@ -363,6 +380,7 @@ export const api = {
   exploration: {
     startCommit: (v: any) => post("/exploration/start/commit", v),
     status: (commit: string) => get(`/exploration/status/${commit}`),
+    state: (user: string) => get(`/exploration/state/${user}`),
     reveal: (v: any) => post("/exploration/reveal", v),
     upgradeTier: (v: any) => post("/exploration/upgrade-tier", v),
   },
@@ -392,14 +410,16 @@ export const api = {
     claim: (v: any) => post("/lottery/claim", v),
   },
 
-  // === [F-06] Барабан удачи (Switchboard) ===
-  drum: {
-    commit: (v: any) => post("/drum/commit", v),
-    status: (user: string) => get(`/drum/status/${user}`),
-    reveal: (v: any) => post("/drum/reveal", v),
+  engagement: {
+    summary: (user: string) => get(`/engagement/summary/${user}`),
+    daily: (v: any) => post("/engagement/daily", v),
+    comeback: (v: any) => post("/engagement/comeback", v),
+    neighbor: (v: any) => post("/engagement/neighbor", v),
+    guild: (v: any) => post("/engagement/guild", v),
+    questProgress: (v: any) => post("/engagement/quest-progress", v),
   },
 
-  // === [F-06] Switchboard pool / pending commits ===
+  // Pending slot-hash commits.
   vrf: {
     health: () => get("/vrf/health"),
     pending: (user: string) => get(`/vrf/pending?user=${encodeURIComponent(user)}`),

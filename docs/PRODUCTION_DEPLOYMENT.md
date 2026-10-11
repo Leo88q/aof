@@ -63,12 +63,16 @@ Compose теперь отражает только поддерживаемый 
 
 Перед первым запуском: ревизия deployment blockers, backup, approved config, TLS reverse proxy. Node runtime — non-root, volume `/app/data`, read-only rootfs. Backend socket опубликован на loopback. Публичный доступ — только через TLS proxy; корректно ограничить proxy trust, иначе все клиенты разделят rate limit.
 
+Ящики, Cloudflare и бэкап в R2 — `docs/VPS_CLOUDFLARE_LAYOUT.md`. Это не сертификат mainnet и не замена проверок выше. Кран остаётся отдельным контейнером `vrf-settler` на том же ящике.
+
+Путь этого ящика — `ops/preflight.sh`, затем на самой VM `ops/up.sh --check`. Он подключает `docker-compose.vps.yml` и не подключает `docker-compose.secrets.yml`: тот override кладёт ключ operator в API. Совмещать их нельзя.
+
 ```bash
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d backend vrf-settler
 ```
 
-`vrf-settler` обязателен: он раскрывает коммиты Switchboard (паки, reroll, экспедиции, кузница, лотерея, барабан), а после окна раскрытия возвращает средства. Без него новые коммиты блокируются circuit breaker'ом. Порядок запуска и наполнения пула описан в `docs/VRF_SWITCHBOARD.md`. Старый `commit-expirer` удалён.
+`vrf-settler` обязателен: он раскрывает коммиты паков, reroll, экспедиций, кузницы и лотереи по хешам слотов и закрывает коммит, у которого хеш уже не читается. Без него новые коммиты блокируются circuit breaker'ом. Старый `commit-expirer` удалён. Барабан и внешний оракул не используются.
 
 С ключами в Docker secrets (этап 1, `docs/SECURITY_RUNBOOK.md`) добавьте override: `docker compose -f docker-compose.prod.yml -f docker-compose.secrets.yml up -d backend vrf-settler`. Воркер получает не ключ operator, а свой кошелёк только для комиссий (`secrets/vrf_settler_secret_key`, создать через `solana-keygen new`, пополнить на ~1 SOL). Он работает в `AUTHORITY_MODE=read-only`, поэтому в `.env` нужен `AUTHORITY_PUBKEY`. Раскрытия и возвраты permissionless: ключ operator воркеру не нужен. Статус `unhealthy` у `vrf-settler` означает, что цикл не завершался больше минуты. Watchdog сам перезапускает зависший процесс.
 

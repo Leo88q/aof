@@ -63,15 +63,7 @@ pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_prote
 
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.forge_commit.key();
-    let accounts = vrf::CommitAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-    };
-    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, clock.slot)?;
 
     let fc = &mut ctx.accounts.forge_commit;
     fc.user = ctx.accounts.user.key();
@@ -82,7 +74,7 @@ pub fn commit_handler(ctx: Context<ForgeAttemptCommit>, slot_type: u8, use_prote
     fc.paid_lamports = fee;
     fc.circuit_burned = circuit_cost;
     fc.silicon_burned = silicon_cost;
-    fc.randomness = ctx.accounts.randomness.key();
+    fc.randomness = ctx.accounts.vrf_slot.key();
     fc.seed_slot = seed_slot;
     fc.commit_slot = clock.slot;
     fc.bump = ctx.bumps.forge_commit;
@@ -126,30 +118,12 @@ pub fn reveal_handler(ctx: Context<ForgeAttemptReveal>, params: VrfRevealParams)
         ctx.accounts.forge_commit.seed_slot,
         ctx.accounts.forge_commit.commit_slot,
     );
-    let accounts = vrf::RevealAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        stats: ctx.accounts.stats.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-        payer: ctx.accounts.cranker.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        program_state: ctx.accounts.program_state.to_account_info(),
-    };
     let value = vrf::reveal(
         &mut ctx.accounts.vrf_slot,
         &commit_key,
-        &randomness,
         seed_slot,
         commit_slot,
-        &accounts,
-        &params,
-        ctx.bumps.vrf_authority,
+        &ctx.accounts.recent_slothashes.to_account_info(),
         clock.slot,
     )?;
 
@@ -263,40 +237,35 @@ pub fn expire_handler(ctx: Context<ForgeAttemptExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.forge_commit.key();
     let commit_slot = ctx.accounts.forge_commit.commit_slot;
-    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+    let path = vrf::unsettled(&ctx.accounts.recent_slothashes.to_account_info(), commit_slot, clock.slot)?;
+    vrf::release_lock(&mut ctx.accounts.vrf_slot, &commit_key)?;
 
     let fc = &ctx.accounts.forge_commit;
     let (paid, circuit, silicon) = (fc.paid_lamports, fc.circuit_burned, fc.silicon_burned);
     let token_program = ctx.accounts.token_program.to_account_info();
     let auth = ctx.accounts.auth.to_account_info();
-    refund_auth_escrow(
-        &token_program,
-        &ctx.accounts.escrow_circuit.to_account_info(),
-        &ctx.accounts.user_circuit.to_account_info(),
-        &auth,
-        ctx.bumps.auth,
-        circuit,
-    )?;
-    refund_auth_escrow(
-        &token_program,
-        &ctx.accounts.escrow_silicon.to_account_info(),
-        &ctx.accounts.user_silicon.to_account_info(),
-        &auth,
-        ctx.bumps.auth,
-        silicon,
-    )?;
+    let forfeit = path == vrf::Unsettled::TreasuryForfeit;
+    if forfeit {
+        burn_auth_escrow(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.escrow_circuit.to_account_info(), &auth, ctx.bumps.auth, circuit)?;
+        burn_auth_escrow(&token_program, &ctx.accounts.silicon_mint.to_account_info(), &ctx.accounts.escrow_silicon.to_account_info(), &auth, ctx.bumps.auth, silicon)?;
+        vrf::transfer_lamports(&ctx.accounts.forge_commit.to_account_info(), &ctx.accounts.treasury.to_account_info(), paid)?;
+    } else {
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_circuit.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, circuit)?;
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_silicon.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, silicon)?;
+    }
 
     // The escrowed fee reaches the user with the rent through `close = user`.
     let fc = &mut ctx.accounts.forge_commit;
     fc.circuit_burned = 0;
     fc.silicon_burned = 0;
+    let (refunded_lamports, circuit_refunded, silicon_refunded) = if forfeit { (0, 0, 0) } else { (paid, circuit, silicon) };
     emit!(ForgeCommitExpired {
         user: fc.user,
         tool_mint: fc.tool_mint,
         slot_type: fc.slot_type,
-        refunded_lamports: paid,
-        circuit_refunded: circuit,
-        silicon_refunded: silicon,
+        refunded_lamports,
+        circuit_refunded,
+        silicon_refunded,
     });
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_FORGE,

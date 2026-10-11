@@ -145,7 +145,7 @@
       "commit_lottery_draw": {
         "role": "gameplay",
         "status": "active",
-        "note": "Commit розыгрыша лотереи через VRF (Switchboard)."
+        "note": "Commit розыгрыша лотереи через slot-hash пул, без оракула."
       },
       "craft": {
         "role": "gameplay",
@@ -402,11 +402,11 @@
         "status": "active",
         "note": "Посадка семян."
       },
-  "purchase_season_pass": {
-    "role": "gameplay",
-    "status": "disabled-on-chain",
-    "note": "Fail-closed до Devnet acceptance: on-chain guard возвращает SeasonPremiumRequired до SOL transfer; HTTP sales gate и UI также закрыты."
-  },
+      "purchase_season_pass": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Покупка пропуска внутри сезона, один раз. Продажа в интерфейсе остаётся за PAID_PASS_READY, это не заглушка require!(false)."
+      },
       "referral_bind": {
         "role": "gameplay",
         "status": "active",
@@ -491,6 +491,11 @@
         "role": "gameplay",
         "status": "active",
         "note": "Полный сброс прогресса; вызывается в одной транзакции с aof_rebirth::do_rebirth."
+      },
+      "seal_laboratory": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души."
       },
       "revoke_collector_mint": {
         "role": "admin",
@@ -635,7 +640,7 @@
       "vrf_pool_add": {
         "role": "admin",
         "status": "active",
-        "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_quests)."
+        "note": "Добавление слота slot-hash пула. В квестах этой инструкции больше нет."
       },
       "vrf_pool_set_retired": {
         "role": "admin",
@@ -728,8 +733,8 @@
       },
       "achievement_unlock": {
         "role": "gameplay",
-        "status": "disabled-on-chain",
-        "note": "disabled / product decision pending — Отключена: нельзя самозаявлять достижение без критериев и доверенного верификатора."
+        "status": "active",
+        "note": "Открытие достижения только после проверки proof-аккаунта программы ядра, не самозаявление."
       },
       "cancel_pending_authority": {
         "role": "admin",
@@ -738,53 +743,18 @@
       },
       "challenge_contribute": {
         "role": "gameplay",
-        "status": "disabled-on-chain",
-        "note": "disabled / product decision pending — Отключена: нет дебета канонического mint медалей и пути расчёта; ждёт экономической спецификации."
+        "status": "active",
+        "note": "Вклад в челлендж списывает маскоты игрока в эскроу раунда и учитывает сумму."
       },
       "challenge_init": {
         "role": "admin",
         "status": "active",
         "note": "Оператор открывает недельный челлендж; вклад (challenge_contribute) пока отключён."
       },
-      "drum_commit": {
-        "role": "gameplay",
-        "status": "disabled-on-chain",
-        "note": "disabled / product decision pending — Отключена (Paused): константы — сырые атомы, а не 5 целых единиц проверенного MIND mint."
-      },
-      "drum_expire": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Permissionless: возврат за спин барабана без reveal."
-      },
-      "drum_reveal": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Reveal спина барабана с подписью оракула."
-      },
-      "init_mind_bank": {
-        "role": "initialization",
-        "status": "active",
-        "note": "Изолированная казна MIND spin V2, изначально на паузе."
-      },
       "init_quest_config": {
         "role": "initialization",
         "status": "active",
         "note": "QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет."
-      },
-      "mind_spin_commit": {
-        "role": "gameplay",
-        "status": "disabled-on-chain",
-        "note": "disabled / product decision pending — Отключена до подписанного devnet-прогона, VRF-смоков и независимого одобрения релиза."
-      },
-      "mind_spin_expire": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Permissionless: возврат за спин MIND spin V2; достижим только после включения mind_spin_commit."
-      },
-      "mind_spin_reveal": {
-        "role": "gameplay",
-        "status": "active",
-        "note": "Расчёт спина MIND V2 (работает и при паузе банка); достижим только после включения mind_spin_commit."
       },
       "quest_claim_reward": {
         "role": "gameplay",
@@ -801,20 +771,40 @@
         "status": "active",
         "note": "Шаг 1 ротации authority (имя общее у всех шести программ)."
       },
-      "set_mind_bank_paused": {
-        "role": "emergency",
+      "claim_daily": {
+        "role": "gameplay",
         "status": "active",
-        "note": "Пауза будущих коммитов MIND V2; расчёты и возвраты остаются доступны."
+        "note": "Ежедневная награда: серия и выплата из казны маскотов, повтор в тот же день закрыт."
       },
-      "vrf_pool_add": {
-        "role": "admin",
+      "claim_comeback": {
+        "role": "gameplay",
         "status": "active",
-        "note": "Добавление randomness-аккаунта Switchboard в пул (имя общее с aof_core)."
+        "note": "Награда за возвращение после паузы, не чаще одного раза в день."
       },
-      "vrf_pool_set_retired": {
-        "role": "admin",
+      "visit_neighbor": {
+        "role": "gameplay",
         "status": "active",
-        "note": "Вывод randomness-аккаунта из пула (имя общее с aof_core)."
+        "note": "Визит к чужому engagement PDA; свой аккаунт и пустой сосед отвергаются."
+      },
+      "guild_deposit": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Вклад в гильдию списывает маскоты игрока и увеличивает накопленный вклад."
+      },
+      "prove_quest_progress": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Отметка прогресса квеста только после той же проверки proof, что и достижение."
+      },
+      "challenge_close": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Закрытие раунда челленджа authority после окна вклада."
+      },
+      "challenge_claim": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Получение доли закрытого челленджа по вкладу игрока, повторно закрыто."
       }
     },
     "aof_rebirth": {
@@ -889,8 +879,8 @@
       },
       "session_create": {
         "role": "gameplay",
-        "status": "disabled-on-chain",
-        "note": "disabled / product decision pending — Отключена (AtomicBindingRequired): сессию нельзя выдавать, пока нет атомарной привязки к тратам."
+        "status": "active",
+        "note": "Создание сессии владельцем. Трата остаётся в session_check_and_spend, не в произвольном вызове."
       },
       "session_pause": {
         "role": "gameplay",
@@ -906,6 +896,11 @@
         "role": "admin",
         "status": "active",
         "note": "Атрибуция доверительного уровня игрока (оператор/оракул); эпоха не откатывается."
+      },
+      "session_execute": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "Живой внешний вызов сессии. Программа цели не должна приходить от вызывающего как произвольный CPI; это открытая проверка #114, не заглушка."
       }
     }
   }

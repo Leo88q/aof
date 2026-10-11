@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Охранный тест аудита NFT-стандартов (docs/NFT_STANDARDS_AUDIT_2026-10-01.md).
+ * Охранный тест аудита NFT-стандартов (the on-chain metadata rules).
  *
  * Текущее разделение стандартов: tool assets use SPL Token + immutable legacy Metaplex Token Metadata, without a Master Edition;
  * Bubblegum V2 и MPL Core/compressed assets не используются. Этот guard проверяет оба утверждения отдельно:
@@ -39,7 +39,7 @@ const FORBIDDEN_CRATES = /name = "(?:mpl-(?:bubblegum|core)(?:-[\w-]+)?|mpl_(?:b
 const COMPRESSION_STANDARD_WORDS = /bubblegum|mpl[-_ ]?core|mplcore|spl[-_]account[-_]compression|concurrent[-_]merkle/i;
 
 test('Cargo.lock и манифесты не тянут Bubblegum, MPL Core или compression', () => {
-  assert.doesNotMatch(read('Cargo.lock'), FORBIDDEN_CRATES, 'в Cargo.lock появился крейт Metaplex/compression — обновите docs/NFT_STANDARDS_AUDIT_2026-10-01.md');
+  assert.doesNotMatch(read('Cargo.lock'), FORBIDDEN_CRATES, 'в Cargo.lock появился крейт Metaplex/compression — обновите the on-chain metadata rules');
   for (const rel of ['Cargo.toml', 'aof-core/Cargo.toml', ...fs.readdirSync(path.join(root, 'programs')).map((d) => `programs/${d}/Cargo.toml`)]) {
     if (!fs.existsSync(path.join(root, rel))) continue;
     assert.doesNotMatch(read(rel), COMPRESSION_STANDARD_WORDS, `${rel}: добавлена зависимость от compressed-NFT стандарта`);
@@ -74,7 +74,7 @@ test('упоминания Bubblegum — только в разрешённых 
   const mentions = everything.filter((rel) => /bubblegum/i.test(read(rel)));
   assert.ok(mentions.length >= 10, `ожидали десяток упоминаний (описательные слои), нашли ${mentions.length} — тест сломан`);
   const stray = mentions.filter((rel) => !allowed.some((re) => re.test(rel)));
-  assert.deepEqual(stray, [], `Bubblegum упомянут вне описательных слоёв: ${stray.join(', ')} — это уже может быть реализация; обновите docs/NFT_STANDARDS_AUDIT_2026-10-01.md`);
+  assert.deepEqual(stray, [], `Bubblegum упомянут вне описательных слоёв: ${stray.join(', ')} — это уже может быть реализация; обновите the on-chain metadata rules`);
 });
 
 test('бэкенд и фронтенд не строят и не читают cNFT: DAS-проверка остаётся TODO', () => {
@@ -82,8 +82,7 @@ test('бэкенд и фронтенд не строят и не читают cN
     .filter((rel) => !rel.includes('/idl/'));
   const offenders = files.filter((rel) => /getAssetProof|getAssetsByOwner|createTreeV2|mintV2|@metaplex-foundation|mpl-bubblegum|mpl-core/.test(read(rel)));
   assert.deepEqual(offenders, [], `backend/frontend начали работать с Metaplex/DAS: ${offenders.join(', ')}`);
-  assert.match(read('aof_backend/src/lib/skrPrivilege.ts'), /TODO: проверка владения NFT Saga\/Seeker через Metaplex DAS API/,
-    'TODO про DAS исчез: значит, проверка владения NFT реализована — обновите аудит');
+  assert.equal(files.includes('aof_backend/src/lib/skrPrivilege.ts'), false, 'SKR privilege helper was removed');
 });
 
 test('tool issuance creates immutable Metaplex metadata on a fixed-supply SPL asset and preserves no-freeze', () => {
@@ -125,10 +124,6 @@ test('аудит ссылается на комментарий collector_stake.
   assert.match(read('aof-core/src/instructions/collector_stake.rs'), /does not inspect Token Metadata accounts/);
 });
 
-test('документ аудита утверждает то же, что проверяет тест', () => {
-  const doc = read('docs/NFT_STANDARDS_AUDIT_2026-10-01.md');
-  for (const needle of ['**Нет.**', 'MPL Core', 'metadata-only asset', 'canonical Metaplex Master Edition NFT', 'freeze_authority', 'ToolData', 'nft-standards.test.cjs', 'COMPRESSION_DESIGN.md']) {
-    assert.ok(doc.includes(needle), `в аудите нет «${needle}»`);
-  }
+test('сжатые NFT не используются', () => {
   assert.match(read('docs/COMPRESSION_DESIGN.md'), /Bubblegum и Light Protocol не используются/);
 });

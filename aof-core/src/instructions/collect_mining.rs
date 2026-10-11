@@ -32,6 +32,67 @@ pub(crate) fn resource_kind_for_tool(tool_type: &str) -> Option<ResourceKind> {
     }
 }
 
+/// Forge slots already sold: 0 speed, 1 durability, 2 energy efficiency.
+pub(crate) const SPEED_ENCHANT_SLOT: u8 = 0;
+pub(crate) const DURABILITY_ENCHANT_SLOT: u8 = 1;
+pub(crate) const ENERGY_ENCHANT_SLOT: u8 = 2;
+
+/// Hours already leave durability one-for-one. A durability enchant level
+/// enters that same subtraction. A session of at least one hour still costs
+/// one durability, so level 5 cannot make the tool free to run.
+pub(crate) fn durability_loss(hours: u8, level: u8) -> Result<u8> {
+    require!(level <= ENCHANT_MAX_LEVEL, AofError::EnchantMaxLevel);
+    if hours == 0 {
+        return Ok(0);
+    }
+    let loss = hours.saturating_sub(level);
+    Ok(if loss == 0 { 1 } else { loss })
+}
+
+/// Missing account means that slot was never enchanted: level 0.
+/// A present account must be this tool's slot of `slot_type`. Another slot,
+/// or someone else's, is rejected rather than ignored.
+pub(crate) fn enchant_slot_level<'info>(
+    tool_mint: &Pubkey,
+    slot_type: u8,
+    remaining: &[AccountInfo<'info>],
+) -> Result<u8> {
+    let Some(info) = remaining.first() else {
+        return Ok(0);
+    };
+    let (expected, _) = Pubkey::find_program_address(
+        &[ENCHANT_SLOT_SEED, tool_mint.as_ref(), &[slot_type]],
+        &crate::ID,
+    );
+    require!(info.key() == expected, AofError::InvalidAmount);
+    require!(info.owner == &crate::ID, AofError::InvalidAmount);
+    let data = info.try_borrow_data()?;
+    let mut slice: &[u8] = &data;
+    let slot = EnchantSlot::try_deserialize(&mut slice)?;
+    require!(slot.tool_mint == *tool_mint, AofError::InvalidMint);
+    require!(slot.slot_type == slot_type, AofError::InvalidAmount);
+    require!(slot.level <= ENCHANT_MAX_LEVEL, AofError::EnchantMaxLevel);
+    Ok(slot.level)
+}
+
+pub(crate) fn durability_enchant_level<'info>(
+    tool_mint: &Pubkey,
+    remaining: &[AccountInfo<'info>],
+) -> Result<u8> {
+    enchant_slot_level(tool_mint, DURABILITY_ENCHANT_SLOT, remaining)
+}
+
+/// Yield and durability stay on the hours the player ordered. Speed only
+/// shortens the wait. A session still takes at least one hour.
+pub(crate) fn mining_wait_hours(hours: u8, level: u8) -> Result<u8> {
+    require!(level <= ENCHANT_MAX_LEVEL, AofError::EnchantMaxLevel);
+    if hours == 0 {
+        return Ok(0);
+    }
+    let wait = hours.saturating_sub(level);
+    Ok(if wait == 0 { 1 } else { wait })
+}
+
 // Use the same checked calculation in settlement and host regression tests.
 pub(crate) fn mining_reward_amount(hours: u8, rarity: Rarity) -> Result<u64> {
     (hours as u64)
@@ -107,11 +168,13 @@ pub fn handler(ctx: Context<CollectMining>) -> Result<()> {
         amount,
     )?;
 
+    let level = durability_enchant_level(&ctx.accounts.mint.key(), &ctx.remaining_accounts)?;
+    let loss = durability_loss(hours, level)?;
     let durability = ctx
         .accounts
         .tool
         .durability
-        .checked_sub(hours)
+        .checked_sub(loss)
         .ok_or(AofError::InsufficientDurability)?;
     ctx.accounts.tool.durability = durability;
     ctx.accounts.tool.is_mining = false;
@@ -170,5 +233,18 @@ mod tests {
         }
         // Zero duration is rejected by start_mining/collect_mining, never minted.
         assert_eq!(mining_reward_amount(0, Rarity::Common).unwrap(), 0);
+    }
+
+    #[test]
+    fn durability_enchant_reduces_the_same_subtraction_and_never_to_zero() {
+        assert_eq!(durability_loss(0, 0).unwrap(), 0);
+        assert_eq!(durability_loss(8, 0).unwrap(), 8);
+        assert_eq!(durability_loss(8, 5).unwrap(), 3);
+        assert_eq!(durability_loss(1, 5).unwrap(), 1);
+        assert_eq!(durability_loss(5, 5).unwrap(), 1);
+        assert!(durability_loss(1, 6).is_err());
+        assert_eq!(mining_wait_hours(8, 5).unwrap(), 3);
+        assert_eq!(mining_wait_hours(1, 5).unwrap(), 1);
+        assert_eq!(mining_wait_hours(0, 5).unwrap(), 0);
     }
 }

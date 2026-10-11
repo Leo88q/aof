@@ -21,10 +21,14 @@ import { InboxHome } from "../inbox/InboxHome";
 import { CompendiumHome } from "../compendium/CompendiumHome";
 import { OnboardingWizard } from "../onboarding/OnboardingWizard";
 import { WellPanel } from "./WellPanel";
-import { DrumSpin } from "../../components/DrumSpin";
+import { EngagementPage } from "./EngagementPage";
 import { NavHeader } from "../../components/NavHeader";
 import { LotteryPage } from "../market/LotteryPage";
+import { FlaskMarketplace } from "../market/FlaskMarketplace";
 import { ExplorationPage } from "./ExplorationPage";
+import { PacksPage } from "../tools/PacksPage";
+import { CraftPage } from "../tools/CraftPage";
+import { FinalePage } from "./FinalePage";
 import { OvenPanel } from "./OvenPanel";
 import { MillPanel } from "./MillPanel";
 import { NeuralLabPanel } from "./NeuralLabPanel";
@@ -32,6 +36,7 @@ import { UI_ICONS } from "../../lib/visualAssets";
 import { LabHero } from "../../components/farm/LabHero";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
 import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 /** Пустой микропланшет: все лунки свободны — состояние участка без инструментов. */
 function emptyPlateWells(rows: number, cols: number) {
@@ -164,6 +169,7 @@ export function FarmDashboard() {
         ))}
       </div>
 
+      <ErrorBoundary label="farm">
       {/* РЕНДЕР: ОБЗОР (оригинальный HomeDashboard) */}
       {subTab === "dashboard" && (
         <>
@@ -181,8 +187,20 @@ export function FarmDashboard() {
                 <Key onClick={() => push("farm", "exploration", (<><NavHeader headerId="exploration" tabKey="farm" /><ExplorationPage /></>))}>
                   {labels.expedition}
                 </Key>
-                <Key onClick={() => push("farm", "drum", (<><NavHeader headerId="drum" tabKey="farm" /><DrumSpin /></>))}>
-                  {labels.drum}
+                <Key onClick={() => push("farm", "fluids", (<><NavHeader headerId="fluids" tabKey="farm" /><FlaskMarketplace /></>))}>
+                  {labels.fluids}
+                </Key>
+                <Key onClick={() => push("tools", "packs", (<><NavHeader headerId="capsules" tabKey="tools" /><PacksPage /></>))}>
+                  {labels.capsules}
+                </Key>
+                <Key onClick={() => push("tools", "craft", (<><NavHeader headerId="craft" tabKey="tools" /><CraftPage /></>))}>
+                  {labels.craft}
+                </Key>
+                <Key onClick={() => push("farm", "finale", (<><NavHeader headerId="finale" tabKey="farm" /><FinalePage /></>))}>
+                  {labels.finale}
+                </Key>
+                <Key onClick={() => push("farm", "daily", (<><NavHeader headerId="daily" tabKey="farm" /><EngagementPage /></>))}>
+                  {labels.streak}
                 </Key>
                 <Key onClick={() => push("farm", "lottery", (<><NavHeader headerId="lottery" tabKey="farm" /><LotteryPage /></>))}>
                   {labels.lottery}
@@ -297,6 +315,7 @@ export function FarmDashboard() {
 
       {/* РЕНДЕР: ПЕЧЬ */}
       {subTab === "oven" && <OvenPanel />}
+      </ErrorBoundary>
 
     </div>
   );

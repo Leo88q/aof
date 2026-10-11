@@ -14,9 +14,19 @@
       "repo": "anza-xyz/agave",
       "criticality": "runtime-infrastructure",
       "pinKind": "reference",
-      "pinnedRef": { "file": "rust-toolchain.toml", "contains": "channel = \"1.89.0\"" },
-      "advisorySources": ["https://github.com/anza-xyz/agave/security/advisories", "https://github.com/anza-xyz/agave/releases"],
-      "watch": ["security-advisories", "releases", "commits"]
+      "pinnedRef": {
+        "file": "rust-toolchain.toml",
+        "contains": "channel = \"1.89.0\""
+      },
+      "advisorySources": [
+        "https://github.com/anza-xyz/agave/security/advisories",
+        "https://github.com/anza-xyz/agave/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases",
+        "commits"
+      ]
     },
     {
       "id": "anchor",
@@ -27,8 +37,15 @@
       "crate": "anchor-lang",
       "pinnedIn": "Cargo.lock",
       "expectedVersion": "0.30.1",
-      "advisorySources": ["https://github.com/coral-xyz/anchor/security/advisories", "https://github.com/coral-xyz/anchor/releases"],
-      "watch": ["security-advisories", "releases", "commits"]
+      "advisorySources": [
+        "https://github.com/coral-xyz/anchor/security/advisories",
+        "https://github.com/coral-xyz/anchor/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases",
+        "commits"
+      ]
     },
     {
       "id": "spl-token",
@@ -38,19 +55,33 @@
       "pinKind": "npm",
       "package": "@solana/spl-token",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/solana-program/token/security/advisories", "https://github.com/solana-program/token/releases"],
-      "watch": ["security-advisories", "releases", "commits"]
+      "advisorySources": [
+        "https://github.com/solana-program/token/security/advisories",
+        "https://github.com/solana-program/token/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases",
+        "commits"
+      ]
     },
     {
       "id": "switchboard-on-demand",
-      "what": "VRF-оракул: программа on-chain и SDK @switchboard-xyz/on-demand",
+      "what": "Остаток SDK выведенного оракула. Не источник случайности; пакет ещё импортируется мёртвыми помощниками.",
       "repo": "switchboard-xyz/on-demand",
-      "criticality": "runtime-oracle",
+      "criticality": "leftover-sdk",
       "pinKind": "npm",
       "package": "@switchboard-xyz/on-demand",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/switchboard-xyz/on-demand/security/advisories", "https://github.com/switchboard-xyz/on-demand/releases"],
-      "watch": ["security-advisories", "releases", "commits"]
+      "advisorySources": [
+        "https://github.com/switchboard-xyz/on-demand/security/advisories",
+        "https://github.com/switchboard-xyz/on-demand/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases",
+        "commits"
+      ]
     },
     {
       "id": "solana-web3js",
@@ -60,8 +91,15 @@
       "pinKind": "npm",
       "package": "@solana/web3.js",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/anza-xyz/solana-web3.js/security/advisories", "https://github.com/anza-xyz/solana-web3.js/releases"],
-      "watch": ["security-advisories", "releases", "commits"]
+      "advisorySources": [
+        "https://github.com/anza-xyz/solana-web3.js/security/advisories",
+        "https://github.com/anza-xyz/solana-web3.js/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases",
+        "commits"
+      ]
     },
     {
       "id": "prisma",
@@ -71,8 +109,14 @@
       "pinKind": "npm",
       "package": "prisma",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/prisma/prisma/security/advisories", "https://github.com/prisma/prisma/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/prisma/prisma/security/advisories",
+        "https://github.com/prisma/prisma/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "express",
@@ -82,8 +126,14 @@
       "pinKind": "npm",
       "package": "express",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/expressjs/express/security/advisories", "https://github.com/expressjs/express/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/expressjs/express/security/advisories",
+        "https://github.com/expressjs/express/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "zod",
@@ -93,8 +143,14 @@
       "pinKind": "npm",
       "package": "zod",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/colinhacks/zod/security/advisories", "https://github.com/colinhacks/zod/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/colinhacks/zod/security/advisories",
+        "https://github.com/colinhacks/zod/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "vite",
@@ -104,8 +160,14 @@
       "pinKind": "npm",
       "package": "vite",
       "pinnedIn": "frontend/package-lock.json",
-      "advisorySources": ["https://github.com/vitejs/vite/security/advisories", "https://github.com/vitejs/vite/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/vitejs/vite/security/advisories",
+        "https://github.com/vitejs/vite/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "react",
@@ -115,8 +177,14 @@
       "pinKind": "npm",
       "package": "react",
       "pinnedIn": "frontend/package-lock.json",
-      "advisorySources": ["https://github.com/facebook/react/security/advisories", "https://github.com/facebook/react/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/facebook/react/security/advisories",
+        "https://github.com/facebook/react/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "websocket-stack",
@@ -126,8 +194,14 @@
       "pinKind": "npm",
       "package": "ws",
       "pinnedIn": "aof_backend/package-lock.json",
-      "advisorySources": ["https://github.com/websockets/ws/security/advisories", "https://github.com/websockets/ws/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/websockets/ws/security/advisories",
+        "https://github.com/websockets/ws/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     },
     {
       "id": "axios",
@@ -137,8 +211,14 @@
       "pinKind": "npm",
       "package": "axios",
       "pinnedIn": "frontend/package-lock.json",
-      "advisorySources": ["https://github.com/axios/axios/security/advisories", "https://github.com/axios/axios/releases"],
-      "watch": ["security-advisories", "releases"]
+      "advisorySources": [
+        "https://github.com/axios/axios/security/advisories",
+        "https://github.com/axios/axios/releases"
+      ],
+      "watch": [
+        "security-advisories",
+        "releases"
+      ]
     }
   ]
 }

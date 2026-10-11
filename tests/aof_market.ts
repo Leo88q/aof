@@ -65,7 +65,7 @@ describe("aof-market: горячий рынок покупает и продаё
   const RARITY = 0; // common
   const RARITY_ARG = { common: {} };
   const UNIT = new BN(1_000_000_000); // 9 decimals, как у ресурсных минтов
-  const FEE_BPS = 200; // 2 %
+  const FEE_BPS = 800; // 8%, treasury floor
   // Цена пула: 1 CORE. Затухание 0, рост 0 — в тесте цена обязана быть
   // предсказуемой, иначе проверка балансов превращается в проверку формулы.
   const TARGET_CORE = new BN(1).mul(UNIT);

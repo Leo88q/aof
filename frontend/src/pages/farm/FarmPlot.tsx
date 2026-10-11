@@ -229,7 +229,9 @@ export function FarmPlot() {
               {selected.isMining ? (
                 toNum(selected.miningEnd) <= Date.now() / 1000 ? (
                   <button onClick={() => quick("collect")} disabled={!MINING_ENABLED || busy}
-                    className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60 cursor-not-allowed">
+                    className={MINING_ENABLED && !busy
+                      ? "mine-start w-full mt-2 py-2.5 rounded-xl font-bold text-sm"
+                      : "w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-bold text-sm disabled:opacity-60"}>
                     {MINING_ENABLED ? copy.collect : copy.collectDisabled}
                   </button>
                 ) : (
@@ -237,7 +239,9 @@ export function FarmPlot() {
                 )
               ) : (
                 <button onClick={() => quick("start")} disabled={!MINING_ENABLED || busy || Number(selected.durability) < 1}
-                  className="w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60 cursor-not-allowed">
+                  className={MINING_ENABLED && !busy && Number(selected.durability) >= 1
+                    ? "mine-start w-full mt-2 py-2.5 rounded-xl font-semibold text-sm"
+                    : "w-full mt-2 py-2.5 rounded-xl bg-soil-800 text-straw font-semibold text-sm disabled:opacity-60"}>
                   {MINING_ENABLED ? copy.start : copy.startDisabled}
                 </button>
               )}

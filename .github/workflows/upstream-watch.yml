@@ -58,8 +58,7 @@ jobs:
           $(sed -n '1,200p' upstream-watch.md)
 
           Порядок разбора: обновить пин в \`security/upstream-dependencies.json\` вместе с lock-файлом,
-          проверить, не затронуты ли наши форки (включая копию \`vrf.rs\` в \`aof-quests\`, сверяется
-          \`scripts/sync-quests-vrf.py\`), прогнать CI. Dependabot у нас не включён осознанно:
+          проверить, что вторая копия случайности не появилась (\`scripts/sync-quests-vrf.py --check\`), прогнать CI. Dependabot у нас не включён осознанно:
           снабженческая атака через автоматический merge — отдельный риск (#107).
           EOF
           )

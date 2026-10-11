@@ -86,10 +86,12 @@ for (const [file, program] of [['aof_core.json', 'core'], ['aof_quests.json', 'q
 
   test(`F-06 ${program}: VRF instructions are discovered from the IDL`, () => {
     const names = vrfInstructions.map((ix) => ix.name);
-    const expected = program === 'core'
-      ? ['pack_open_commit', 'pack_open_reveal', 'reroll_random_commit', 'reroll_random_reveal', 'start_exploration_commit', 'explore_reveal', 'forge_attempt_commit', 'forge_attempt_reveal', 'commit_lottery_draw', 'draw_lottery', 'vrf_pool_add']
-      : ['drum_commit', 'drum_reveal', 'vrf_pool_add'];
-    for (const name of expected) assert.ok(names.includes(name), `${name} missing`);
+    if (program === 'quests') {
+      assert.deepEqual(names, [], 'quests drum VRF instructions must stay deleted');
+    } else {
+      const expected = ['pack_open_commit', 'pack_open_reveal', 'reroll_random_commit', 'reroll_random_reveal', 'start_exploration_commit', 'explore_reveal', 'forge_attempt_commit', 'forge_attempt_reveal', 'commit_lottery_draw', 'draw_lottery', 'vrf_pool_add'];
+      for (const name of expected) assert.ok(names.includes(name), `${name} missing`);
+    }
   });
 
   for (const ix of vrfInstructions) {

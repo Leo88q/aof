@@ -187,6 +187,22 @@ pub struct SessionRevoke<'info> {
 /// account to this authority's namespace. The `authority` is now an explicit
 /// account and the session is derived from it, exactly like SessionRevoke does.
 #[derive(Accounts)]
+pub struct SessionExecute<'info> {
+    pub session_signer: Signer<'info>,
+    /// CHECK: the program the session was created for. The CPI target.
+    pub target_program: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds = [SESSION_SEED, session.authority.as_ref()],
+        bump,
+        constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized,
+        constraint = !session.revoked @ SkError::SessionRevoked,
+        constraint = !session.paused @ SkError::SessionRevoked
+    )]
+    pub session: Account<'info, SessionToken>,
+}
+
+#[derive(Accounts)]
 pub struct SessionCheckAndSpend<'info> {
     pub session_signer: Signer<'info>,
     /// Owner co-signature is required while delegated spending is disabled.
@@ -202,6 +218,30 @@ pub struct SessionCheckAndSpend<'info> {
         constraint = session.session_signer == session_signer.key() @ SkError::Unauthorized
     )]
     pub session: Account<'info, SessionToken>,
+}
+
+fn apply_spend(s: &mut SessionToken, ix_bit: u64, amount: u64) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+    require!(now <= s.valid_until, SkError::SessionExpired);
+    require!(s.allowed_ixs & ix_bit == ix_bit, SkError::IxNotAllowed);
+    require!(amount <= s.max_amount_per_tx, SkError::AmountExceedsLimit);
+    if now.saturating_sub(s.day_start) >= 86400 {
+        s.day_start = now;
+        s.spent_today = 0;
+    }
+    let daily_cap = s.max_amount_per_tx.checked_mul(1000).unwrap_or(u64::MAX);
+    let new_spent = s.spent_today.checked_add(amount).ok_or(SkError::MathOverflow)?;
+    require!(new_spent <= daily_cap, SkError::AmountExceedsLimit);
+    s.spent_today = new_spent;
+    Ok(())
+}
+
+#[event]
+pub struct SessionExecuted {
+    pub authority: Pubkey,
+    pub session: Pubkey,
+    pub amount: u64,
+    pub ix_bit: u64,
 }
 
 #[program]
@@ -244,10 +284,6 @@ pub mod aof_session_keys {
         requested_max_per_tx: u64,
         ttl_seconds: i64,
     ) -> Result<()> {
-        // A preflight reservation is not cryptographically bound to the
-        // following target-program instruction. Do not expose it as a usable
-        // spend authorization until a wrapper/CPI path enforces that binding.
-        require!(false, SkError::AtomicBindingRequired);
         require!(allowed_ixs & FORBIDDEN_IXS_MASK == 0, SkError::ForbiddenIxRequested);
         require!(ttl_seconds > 0 && ttl_seconds <= 30 * 86400, SkError::InvalidTtl);
         let daily_cap = tier_daily_cap_lamports(ctx.accounts.trust.tier);
@@ -287,10 +323,45 @@ pub mod aof_session_keys {
         Ok(())
     }
 
+    /// Spend the session budget and CPI the target instruction in the same
+    /// instruction. A separate reservation cannot authorize a later spend.
+    pub fn session_execute<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SessionExecute<'info>>,
+        ix_bit: u64,
+        amount: u64,
+        ix_data: Vec<u8>,
+    ) -> Result<()> {
+        apply_spend(&mut ctx.accounts.session, ix_bit, amount)?;
+        require_keys_eq!(
+            ctx.accounts.target_program.key(),
+            ctx.accounts.session.target_program,
+            SkError::Unauthorized
+        );
+        let ix = anchor_lang::solana_program::instruction::Instruction {
+            program_id: ctx.accounts.target_program.key(),
+            accounts: ctx.remaining_accounts.iter().map(|a| {
+                anchor_lang::solana_program::instruction::AccountMeta {
+                    pubkey: *a.key,
+                    is_signer: a.is_signer,
+                    is_writable: a.is_writable,
+                }
+            }).collect(),
+            data: ix_data,
+        };
+        anchor_lang::solana_program::program::invoke(&ix, ctx.remaining_accounts)?;
+        emit!(SessionExecuted {
+            authority: ctx.accounts.session.authority,
+            session: ctx.accounts.session.key(),
+            amount,
+            ix_bit,
+        });
+        Ok(())
+    }
+
     pub fn session_check_and_spend(ctx: Context<SessionCheckAndSpend>, ix_bit: u64, amount: u64) -> Result<()> {
-        // This instruction only reserves a counter; it cannot prove which
-        // target instruction will execute next. Keep it disabled until the
-        // reservation and target CPI live in one atomic transaction path.
+        // A counter reservation is not the target instruction. The only spend
+        // path is `session_execute`, which CPIs the target in this instruction.
+        let _ = (ctx, ix_bit, amount);
         require!(false, SkError::AtomicBindingRequired);
         let s = &mut ctx.accounts.session;
         require!(s.authority == ctx.accounts.authority.key(), SkError::Unauthorized);

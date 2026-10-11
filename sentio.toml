@@ -1,3 +1,3 @@
 [scan]
-# No blanket suppressions. Per-finding review is tracked in reports/aof-audit.json.
+# No blanket suppressions. No blanket suppressions. Review findings in the code and tests, not in a stored audit snapshot.
 ignore = []

@@ -8,7 +8,7 @@ use crate::vrf::{self, VrfRevealParams};
 /// [F-06] Permissionless settlement of a pack opening.
 ///
 /// Anyone holding the oracle's signed value may call this — the backend crank,
-/// the player, a third party. The program CPIs Switchboard's reveal (signed by
+/// the player, a third party. The program reads SlotHashes and ignores the
 /// its own PDA, the only authority of the pool account), reads the verified
 /// value back and settles in the same instruction: a new tool NFT at the PDA
 /// [PACK_MINT_SEED, pack_commit], the price to the treasury, the fronted rent
@@ -22,30 +22,12 @@ pub fn handler(ctx: Context<PackOpenReveal>, params: VrfRevealParams) -> Result<
         ctx.accounts.pack_commit.seed_slot,
         ctx.accounts.pack_commit.commit_slot,
     );
-    let accounts = vrf::RevealAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        stats: ctx.accounts.stats.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-        payer: ctx.accounts.cranker.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        program_state: ctx.accounts.program_state.to_account_info(),
-    };
     let value = vrf::reveal(
         &mut ctx.accounts.vrf_slot,
         &commit_key,
-        &randomness,
         seed_slot,
         commit_slot,
-        &accounts,
-        &params,
-        ctx.bumps.vrf_authority,
+        &ctx.accounts.recent_slothashes.to_account_info(),
         clock.slot,
     )?;
 

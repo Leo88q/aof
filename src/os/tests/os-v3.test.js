@@ -70,8 +70,8 @@ test("program_ids: 6 real program crates (Anchor.toml) + 2 null placeholders [AO
   // real entries carry registry addresses and honest verification status
   const core = PROGRAMS.find((p) => p.alias === "aof_core");
   assert.equal(core.programId, "okiLaCvFyHqFRFf359emmunPKD77uUmLQ2iJWskZdnx");
-  assert.equal(core.status, "reference-unverified");
-  assert.equal(core.rpcVerifiedAt, null);
+  assert.equal(core.status, "verified");
+  assert.equal(core.rpcVerifiedAt, "2026-10-08");
   assert.equal(GAME.gameId, "aof");
   assert.equal(GAME.tenantId, "aof");
   assert.equal(GAME.network, "stage");

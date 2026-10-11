@@ -19,6 +19,7 @@ pub mod collect_model;
 pub mod weather_crank;
 pub mod collect_power;
 pub mod craft_recipe;
+pub mod seal_laboratory;
 pub mod deposit_gas;
 pub mod withdraw_gas;
 pub mod sweep_gas_fees;

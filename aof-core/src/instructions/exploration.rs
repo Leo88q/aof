@@ -75,15 +75,7 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> 
 
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.exploration_commit.key();
-    let accounts = vrf::CommitAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-    };
-    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, &accounts, ctx.bumps.vrf_authority, clock.slot)?;
+    let seed_slot = vrf::commit(&mut ctx.accounts.vrf_slot, commit_key, clock.slot)?;
 
     let ec = &mut ctx.accounts.exploration_commit;
     ec.user = ctx.accounts.user.key();
@@ -93,7 +85,7 @@ pub fn start_commit_handler(ctx: Context<StartExplorationCommit>) -> Result<()> 
     ec.circuit_burned = TRIP_COST_CIRCUIT;
     ec.silicon_burned = TRIP_COST_SILICON;
     ec.dataset_burned = TRIP_COST_DATASET;
-    ec.randomness = ctx.accounts.randomness.key();
+    ec.randomness = ctx.accounts.vrf_slot.key();
     ec.seed_slot = seed_slot;
     ec.commit_slot = clock.slot;
     ec.bump = ctx.bumps.exploration_commit;
@@ -139,30 +131,12 @@ pub fn reveal_handler(ctx: Context<ExploreReveal>, params: VrfRevealParams) -> R
         ctx.accounts.exploration_commit.commit_slot,
         ctx.accounts.exploration_commit.tier,
     );
-    let accounts = vrf::RevealAccounts {
-        switchboard_program: ctx.accounts.switchboard_program.to_account_info(),
-        randomness: ctx.accounts.randomness.to_account_info(),
-        oracle: ctx.accounts.oracle.to_account_info(),
-        queue: ctx.accounts.queue.to_account_info(),
-        stats: ctx.accounts.stats.to_account_info(),
-        vrf_authority: ctx.accounts.vrf_authority.to_account_info(),
-        payer: ctx.accounts.cranker.to_account_info(),
-        recent_slothashes: ctx.accounts.recent_slothashes.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        reward_escrow: ctx.accounts.reward_escrow.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        wrapped_sol_mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        program_state: ctx.accounts.program_state.to_account_info(),
-    };
     let value = vrf::reveal(
         &mut ctx.accounts.vrf_slot,
         &commit_key,
-        &randomness,
         seed_slot,
         commit_slot,
-        &accounts,
-        &params,
-        ctx.bumps.vrf_authority,
+        &ctx.accounts.recent_slothashes.to_account_info(),
         clock.slot,
     )?;
 
@@ -224,15 +198,23 @@ pub fn expire_handler(ctx: Context<ExploreExpire>) -> Result<()> {
     let clock = Clock::get()?;
     let commit_key = ctx.accounts.exploration_commit.key();
     let commit_slot = ctx.accounts.exploration_commit.commit_slot;
-    vrf::release_for_refund(&mut ctx.accounts.vrf_slot, &commit_key, commit_slot, clock.slot)?;
+    let path = vrf::unsettled(&ctx.accounts.recent_slothashes.to_account_info(), commit_slot, clock.slot)?;
+    vrf::release_lock(&mut ctx.accounts.vrf_slot, &commit_key)?;
 
     let ec = &ctx.accounts.exploration_commit;
     let token_program = ctx.accounts.token_program.to_account_info();
     let auth = ctx.accounts.auth.to_account_info();
-    refund_auth_escrow(&token_program, &ctx.accounts.escrow_data.to_account_info(), &ctx.accounts.user_data.to_account_info(), &auth, ctx.bumps.auth, ec.data_burned)?;
-    refund_auth_escrow(&token_program, &ctx.accounts.escrow_circuit.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, ec.circuit_burned)?;
-    refund_auth_escrow(&token_program, &ctx.accounts.escrow_silicon.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, ec.silicon_burned)?;
-    refund_auth_escrow(&token_program, &ctx.accounts.escrow_dataset.to_account_info(), &ctx.accounts.user_dataset.to_account_info(), &auth, ctx.bumps.auth, ec.dataset_burned)?;
+    if path == vrf::Unsettled::TreasuryForfeit {
+        burn_auth_escrow(&token_program, &ctx.accounts.data_mint.to_account_info(), &ctx.accounts.escrow_data.to_account_info(), &auth, ctx.bumps.auth, ec.data_burned)?;
+        burn_auth_escrow(&token_program, &ctx.accounts.circuit_mint.to_account_info(), &ctx.accounts.escrow_circuit.to_account_info(), &auth, ctx.bumps.auth, ec.circuit_burned)?;
+        burn_auth_escrow(&token_program, &ctx.accounts.silicon_mint.to_account_info(), &ctx.accounts.escrow_silicon.to_account_info(), &auth, ctx.bumps.auth, ec.silicon_burned)?;
+        burn_auth_escrow(&token_program, &ctx.accounts.dataset_mint.to_account_info(), &ctx.accounts.escrow_dataset.to_account_info(), &auth, ctx.bumps.auth, ec.dataset_burned)?;
+    } else {
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_data.to_account_info(), &ctx.accounts.user_data.to_account_info(), &auth, ctx.bumps.auth, ec.data_burned)?;
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_circuit.to_account_info(), &ctx.accounts.user_circuit.to_account_info(), &auth, ctx.bumps.auth, ec.circuit_burned)?;
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_silicon.to_account_info(), &ctx.accounts.user_silicon.to_account_info(), &auth, ctx.bumps.auth, ec.silicon_burned)?;
+        refund_auth_escrow(&token_program, &ctx.accounts.escrow_dataset.to_account_info(), &ctx.accounts.user_dataset.to_account_info(), &auth, ctx.bumps.auth, ec.dataset_burned)?;
+    }
 
     emit!(VrfCommitRefunded {
         mechanic: VRF_MECHANIC_EXPLORATION,

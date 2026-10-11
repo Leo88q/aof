@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * [F-06] Economic check of every Switchboard-settled mechanic, straight from
- * the Rust constants (so the report cannot drift from the programs):
- * packs, random reroll, forge, exploration, lottery, drum, plus the rent the
- * VRF settlement itself costs.
+ * [F-06] Economic check of the slot-hash mechanics, straight from the Rust
+ * constants (so the report cannot drift from the programs): packs, random
+ * reroll, forge, exploration, lottery, plus the rent the settlement itself
+ * costs. Drum is deleted and is not part of this report.
  *
  *   node scripts/economy/rng-ev.mjs            # rewrite docs/ECONOMY_RNG_EV.md
  *   node scripts/economy/rng-ev.mjs --check    # exit 1 if the report is stale
@@ -54,11 +54,6 @@ export function readConstants() {
   const c = makeReader(read("aof-core/src/constants.rs"));
   const unit = c.num("RESOURCE_UNIT");
   const u = (x) => x / unit;
-  const drumSrc = read("programs/aof-quests/src/instructions/drum/drum_reveal.rs");
-  const drumPrizes = /pub const DRUM_PRIZES: \[\(u16, u64\); \d+\] = \[([\s\S]*?)\];/.exec(drumSrc)[1]
-    .split("\n").map((l) => /\((\d+),\s*(\d+)\)/.exec(l)).filter(Boolean).map((m) => [Number(m[1]), Number(m[2])]);
-  const drumCost = Number(/pub const DRUM_SPIN_COST_MASCOT: u64 = (\d+);/.exec(read("programs/aof-quests/src/instructions/drum/drum_commit.rs"))[1]);
-  const drumMax = Number(/pub const DRUM_MAX_PRIZE: u64 = (\d+);/.exec(drumSrc)[1]);
   const toolTypes = (/pub const PACK_TOOL_TYPES: \[&str; (\d+)\]/.exec(read("aof-core/src/constants.rs")) || [])[1];
   return {
     packs: ["SMALL", "MEDIUM", "BIG"].map((k) => ({
@@ -85,7 +80,6 @@ export function readConstants() {
       price: c.num("LOTTERY_TICKET_PRICE_LAMPORTS"), poolBps: c.num("LOTTERY_POOL_BPS"), devBps: c.num("LOTTERY_DEV_BPS"),
       maxTickets: c.num("LOTTERY_MAX_TICKETS_PER_DAY"), salesSeconds: c.num("LOTTERY_SALES_SECONDS"), timeoutSeconds: c.num("LOTTERY_ROUND_TIMEOUT_SECONDS"),
     },
-    drum: { prizes: drumPrizes, cost: drumCost, maxPrize: drumMax },
     vrfRefundAfterSlots: c.num("VRF_REFUND_AFTER_SLOTS"),
   };
 }
@@ -169,11 +163,6 @@ export function explorationTiers(c) {
   });
 }
 
-export function drumStats(c) {
-  const ev = sum(c.drum.prizes.map(([w, a]) => w * a)) / 10_000;
-  return { ev, rtp: ev / c.drum.cost, pAtLeastCost: sum(c.drum.prizes.filter(([, a]) => a >= c.drum.cost).map(([w]) => w)) / 10_000 };
-}
-
 // ---------------------------------------------------------------- report
 
 const pct = (x, d = 1) => `${(x * 100).toFixed(d)}%`;
@@ -185,14 +174,13 @@ export function render(c = readConstants()) {
   const forgePlain = forgeExpectations(c, false);
   const forgeProt = forgeExpectations(c, true);
   const tiers = explorationTiers(c);
-  const drum = drumStats(c);
   const deposit = settlementDeposit();
   const slot = poolSlotRent();
   const L = [];
-  L.push("# Экономика механик со случайностью (Switchboard On-Demand)");
+  L.push("# Экономика механик со случайностью (хеш будущего слота)");
   L.push("");
-  L.push("> Сгенерировано `node scripts/economy/rng-ev.mjs` из констант `aof-core/src/constants.rs` и");
-  L.push("> `programs/aof-quests/src/instructions/drum/*`. Не редактировать вручную: CI сверяет файл с исходниками");
+  L.push("> Сгенерировано `node scripts/economy/rng-ev.mjs` из констант `aof-core/src/constants.rs`.");
+  L.push("> Барабан удалён и в отчёт не входит. Не редактировать вручную: CI сверяет файл с исходниками");
   L.push("> (`tests/readiness/rng-economy.test.cjs`). Курс для ориентира: 1 SOL = $100 (как в constants.rs).");
   L.push("");
   L.push("## Итог");
@@ -203,9 +191,8 @@ export function render(c = readConstants()) {
   L.push(`| Чем дороже пак, тем выше ожидаемая редкость (${packs.map((p) => num(p.expectedRarity, 2)).join(" < ")}) | ✅ |`);
   L.push(`| Экспедиции — чистый сток ресурсов на каждом тире (награда ≤ ${pct(Math.max(...tiers.map((t) => t.sinkRatio)))} стоимости) | ✅ |`);
   L.push(`| Кузница: шанс успеха не растёт с уровнем, плата не падает | ✅ |`);
-  L.push(`| Барабан: RTP ${pct(drum.rtp)} ≤ 100%, джекпот ${c.drum.maxPrize} покрывается проверкой казны при коммите | ✅ |`);
   L.push(`| Лотерея: приз ${pct(c.lottery.poolBps / 10_000, 0)} пула, доля дома ${pct(c.lottery.devBps / 10_000, 0)} только после розыгрыша; неразыгранный раунд возвращает билеты полностью | ✅ |`);
-  L.push(`| Окно раскрытия ${c.vrfRefundAfterSlots} слотов (~${num((c.vrfRefundAfterSlots * 0.4) / 3600, 1)} ч) длиннее окна оракула (~1 ч) | ✅ |`);
+  L.push(`| Раскрытие читает четыре будущих хеша; известный исход нельзя вернуть игроку, устаревший хеш уходит в казну | ✅ |`);
   L.push("");
   L.push("## Паки");
   L.push("");
@@ -215,7 +202,7 @@ export function render(c = readConstants()) {
     L.push(`| ${p.id} | ${sol(p.price, 2)} | ${p.odds.slice(0, 4).map((w) => pct(w / 10_000)).join(" | ")} | ${num(p.expectedRarity, 2)} | ${pct(p.rarePlus)} | ${num(p.solPerEpic, 1)} | ${num(p.expectedUnits, 1)} |`);
   }
   L.push("");
-  L.push(`Тип инструмента выбирается равновероятно из ${c.packToolTypes} (независимая «полоса» того же значения оракула).`);
+  L.push(`Тип инструмента выбирается равновероятно из ${c.packToolTypes} (независимая «полоса» того же значения).`);
   L.push(`Кроме цены, коммит вносит депозит ${sol(deposit)} — ренту mint + ATA + ToolData нового NFT; её получает`);
   L.push("тот, кто создаёт эти аккаунты при раскрытии (сервис или сам игрок), остаток возвращается игроку. Аккаунты");
   L.push("остаются у игрока, так что это не комиссия игры. Шансы фиксируются при оплате: смена `set_pack_config`");
@@ -280,28 +267,19 @@ export function render(c = readConstants()) {
   L.push(`Продажи закрывает коммит розыгрыша: оператор в любой момент, любой — через ${num(c.lottery.salesSeconds / 86_400, 0)} дн.;`);
   L.push(`через ${num(c.lottery.timeoutSeconds / 86_400, 0)} дн. без розыгрыша каждый билет возвращается покупателю полностью.`);
   L.push("");
-  L.push("## Барабан удачи");
-  L.push("");
-  L.push("| Вес | Приз (маскоты) |");
-  L.push("|---|---|");
-  for (const [w, a] of c.drum.prizes) L.push(`| ${pct(w / 10_000)} | ${a} |`);
-  L.push("");
-  L.push(`Спин ${c.drum.cost} маскотов: E[приз] = ${num(drum.ev, 2)}, RTP ${pct(drum.rtp)}, P(приз ≥ цены) = ${pct(drum.pAtLeastCost)}.`);
-  L.push("");
   L.push("## Стоимость самой случайности");
   L.push("");
   L.push(`* Депозит на NFT инструмента (паки, reroll): ${sol(deposit)} — mint ${sol(rentExempt(82))}, ATA ${sol(rentExempt(165))}, ToolData ${sol(rentExempt(TOOL_DATA_SPACE))}.`);
   L.push(`* Слот пула (разово, платит оператор): ≈ ${sol(slot)} — аккаунт случайности ${sol(rentExempt(480))}, wSOL-эскроу ${sol(rentExempt(165))},`);
-  L.push(`  LUT от ${sol(rentExempt(56))} (Switchboard может его расширять), VrfSlot ${sol(rentExempt(102))}.`);
-  L.push("* Пропускная способность: слот занят от коммита до раскрытия (обычно 2–5 с). 32 слота ≈ 6–16 открытий в секунду;");
-  L.push("  пул расширяется `POST /vrf/pool/add` без остановки игры.");
-  L.push("* Комиссию оракула при раскрытии (если очередь её берёт) платит раскрывающий — обычно сервис игры.");
+  L.push(`  VrfSlot ${sol(rentExempt(102))}.`);
+  L.push("* Слот пула занят от коммита до раскрытия или классификации незакрытого коммита.");
+  L.push("  Пул расширяется `POST /vrf/pool/add` без остановки игры. Отдельной комиссии оракула нет.");
   L.push("");
   L.push("## Как проверить любой исход");
   L.push("");
-  L.push("Событие `VrfSettled` публикует значение оракула. Исход — чистая функция:");
+  L.push("Исход — чистая функция четырёх хешей слотов и адреса коммита, не подпись оракула.");
   L.push("`roll = sha256(\"aof-vrf-v1\" || tag || commit || value)`, полосы по 8 байт, `bps = (lane × 10000) >> 64`;");
-  L.push("теги: `pack`, `reroll`, `explore`, `forge`, `lottery`, `drum`; шансы — снимок в аккаунте коммита.");
+  L.push("теги: `pack`, `reroll`, `explore`, `forge`, `lottery`; шансы — снимок в аккаунте коммита.");
   L.push("");
   return L.join("\n");
 }

@@ -130,6 +130,13 @@ anchor build --no-idl
 anchor test --skip-build
 ```
 
+`make test` идёт через `scripts/anchor-test.sh` и больше не собирает тестовый двойник оракула:
+каталог `tests/mock-switchboard` удалён и не должен возвращаться. VRF-цикл `tests/aof_vrf_localnet.ts`
+без локального оракула остаётся `skipped`; это не зелёный прогон расчёта. Живой расчёт читает SlotHashes,
+а не подпись оракула. Отчёт по compute units (`tests/aof_cu_report.ts`) читает историю транзакций
+валидатора и опирается на `[test.validator] limit_ledger_size` в `Anchor.toml` — по умолчанию Agave
+держит только 10 000 shreds и история длинного прогона до отчёта не доживает.
+
 ## Порт 8080 занят чужим сервисом: `{"detail":"Not Found"}` вместо ответа backend
 
 Симптом: backend поднялся (`aof-backend started`, `/health` в логе отвечает), а снаружи

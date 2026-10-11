@@ -45,20 +45,20 @@ const edit = (tmp, rel, fn) => { const p = path.join(tmp, rel); fs.writeFileSync
 const editJson = (tmp, rel, fn) => edit(tmp, rel, (text) => `${JSON.stringify(fn(JSON.parse(text)), null, 2)}\n`);
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 176 инструкций, все классифицированы, файлы свежие', () => {
+test('репозиторий проходит гейт: 175 инструкций, все классифицированы, файлы свежие', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
-  assert.match(result.out, /176 инструкций, все классифицированы/);
+  assert.match(result.out, /175 инструкций, все классифицированы/);
 });
 
 test('счётчики по программам совпадают с IDL, а у каждой инструкции есть обработчик', () => {
   const inventory = JSON.parse(read('docs/INSTRUCTION_INVENTORY.json'));
-  const expected = { aof_core: 128, aof_market: 12, aof_quests: 19, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 6 };
+  const expected = { aof_core: 129, aof_market: 12, aof_quests: 16, aof_rebirth: 5, aof_liquidity: 6, aof_session_keys: 7 };
   for (const [name, count] of Object.entries(expected)) {
     assert.equal(JSON.parse(read(`aof_backend/src/idl/${name}.json`)).instructions.length, count, `IDL ${name}`);
     assert.equal(inventory.programs[name].instructions, count, `инвентарь ${name}`);
   }
-  assert.equal(inventory.totals.instructions, 176);
+  assert.equal(inventory.totals.instructions, 175);
   for (const ix of inventory.instructions) {
     assert.ok(ix.handler.file, `${ix.program}.${ix.name}: не найден обработчик (${ix.handler.path})`);
     assert.ok(ix.role && ix.status && ix.note, `${ix.program}.${ix.name}: нет классификации`);
@@ -116,8 +116,11 @@ test('запись о несуществующей инструкции, неи�
 
 test('статус в классификации обязан совпадать с кодом: отключённое не может быть «active» и наоборот', () => {
   withRoot((tmp) => {
-    // A disabled purchase path cannot be classified as active.
-    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'active'; return roles; });
+    // The live purchase path is implemented. A restored hard stub must not stay classified active.
+    edit(tmp, 'aof-core/src/instructions/season.rs', (src) => src.replace(
+      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {\n',
+      'pub fn purchase_pass_handler(ctx: Context<PurchaseSeasonPass>) -> Result<()> {\n    require!(false, AofError::SeasonPremiumRequired);\n',
+    ));
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
     assert.match(result.out, /aof_core\.purchase_season_pass: код отключает инструкцию .* статус 'active'/);
@@ -129,11 +132,8 @@ test('статус в классификации обязан совпадать
     assert.match(result.out, /aof_core\.set_fees: в классификации инструкция отключена, но в коде этого не видно/);
   });
   withRoot((tmp) => {
-    // Removing the fail-closed guard must be detected against disabled classification.
-    edit(tmp, 'aof-core/src/instructions/season.rs', (src) => src.replace(
-      '    require!(false, AofError::SeasonPremiumRequired);\n',
-      '',
-    ));
+    // Classifying the implemented purchase as disabled must fail: the hard stub is gone.
+    editJson(tmp, 'security/instruction-roles.json', (roles) => { roles.programs.aof_core.purchase_season_pass.status = 'disabled-on-chain'; return roles; });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1);
     assert.match(result.out, /aof_core\.purchase_season_pass: в классификации инструкция отключена, но в коде этого не видно/);
@@ -229,7 +229,7 @@ test('вызовы атрибутируются по получателю, ре�
   assert.equal(byKey.get('aof_market.set_paused').callSites.backend, undefined, 'вызов program.methods.setPaused принадлежит aof_core, а не aof_market');
 });
 
-test('--compare-cu сверяет статический охват с CU-отчётом и держит порог 150 000 CU', () => {
+test('--compare-cu сверяет статический охват с CU-отчётом и держит порог 150 000 CU (VRF — 175 000)', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aof-cu-'));
   try {
     const report = path.join(dir, 'cu-report.md');
@@ -237,13 +237,30 @@ test('--compare-cu сверяет статический охват с CU-отч
       '| MintTool | 4 | 41000 | 38000 | 20.5% |', '| SetFees | 1 | 9000 | 9000 | 4.5% |', '| NotInIdl | 1 | 100 | 100 | 0.1% |'].join('\n'));
     let result = run(['--compare-cu', report]);
     assert.equal(result.code, 0, result.out);
-    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 128 в IDL aof_core/);
+    assert.match(result.out, /CU-отчёт: 3 инструкций выполнено успешно из 129 в IDL aof_core/);
     assert.match(result.out, /В отчёте, но не в IDL \(1\): NotInIdl/);
     assert.match(result.out, /Не затронуты ни тестами, ни CU-отчётом/);
+
+    // VRF-раскрытия ходят в Metaplex CPI (PR #35) и штатно измеряются в 143k–152k:
+    // для них действует отдельный порог 175 000, иначе отчёт ругался бы на норму.
+    fs.writeFileSync(report, ['# cu', '', '| Instruction | Calls | Max CU | Median CU | Max, % of 200k |', '|---|---:|---:|---:|---:|',
+      '| RerollRandomReveal | 1 | 152000 | 152000 | 76.0% |', '| PackOpenReveal | 2 | 148573 | 145571 | 74.3% |'].join('\n'));
+    result = run(['--compare-cu', report]);
+    assert.equal(result.code, 0, `VRF-раскрытия до 175 000 CU допустимы: ${result.out}`);
+    assert.doesNotMatch(result.out, /Выше порога/);
+
+    // 150 000 остаётся жёстким для всех прочих инструкций.
     fs.appendFileSync(report, '\n| Craft | 1 | 160001 | 160001 | 80% |\n');
     result = run(['--compare-cu', report]);
-    assert.equal(result.code, 1, 'выше 150 000 CU — отказ');
-    assert.match(result.out, /Выше порога 150 000 CU: Craft: 160001/);
+    assert.equal(result.code, 1, 'не-VRF инструкция выше 150 000 CU — отказ');
+    assert.match(result.out, /Выше порога 150000 CU \(VRF-раскрытия VrfPoolAdd\/\*Commit\/\*Reveal — 175000 CU\): Craft: 160001/);
+
+    // VRF-инструкция выше своего порога — тоже отказ (порог не «выключен»).
+    fs.appendFileSync(report, '\n| DrawLottery | 1 | 180000 | 180000 | 90% |\n');
+    result = run(['--compare-cu', report]);
+    assert.equal(result.code, 1, 'VRF-инструкция выше 175 000 CU — отказ');
+    assert.match(result.out, /DrawLottery: 180000/);
+
     assert.equal(run(['--compare-cu', path.join(dir, 'nope.md')]).code, 2);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

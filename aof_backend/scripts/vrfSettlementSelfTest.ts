@@ -1,20 +1,20 @@
 /**
  * [F-06] Offline self-test of src/lib/vrfSettlement.ts — the one module that
- * knows the account layout of every commit / reveal / refund instruction of
- * the six Switchboard-backed mechanics (packs, random reroll, expeditions,
- * forge, lottery, drum).
+ * knows the account layout of every commit / reveal / refund instruction.
+ * Packs, random reroll, expeditions, forge and lottery reveal through the
+ * pack-opening path.
  *
  * nf-mutate (2026-09-28) scored this module at 38 %: the per-mechanic
  * discovery (`if (mechanic === …)`), the lottery filter, the off-curve ATA
  * flag and every `[0]`-vs-bump index in the account wiring survived, because
  * the only coverage was the devnet probe. This test stubs the Anchor account
- * clients, the Switchboard reveal and the co-signer, then checks each built
- * instruction account-by-account against the committed IDL — so a wrong or
- * swapped account in a reveal/refund transaction fails here, not on chain.
+ * clients and the co-signer, then checks each built instruction
+ * account-by-account against the committed IDL — so a wrong or swapped
+ * account in a reveal/refund transaction fails here, not on chain.
  */
 import "dotenv/config";
 import assert from "node:assert/strict";
-import { Keypair, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { Keypair, PublicKey, SYSVAR_SLOT_HASHES_PUBKEY, TransactionInstruction } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import BN from "bn.js";
 
@@ -37,7 +37,6 @@ const pda = require("../src/lib/pda") as typeof import("../src/lib/pda");
 const k = (seed: number) => new PublicKey(Buffer.alloc(32, seed));
 const SYSTEM = new PublicKey("11111111111111111111111111111111");
 const CORE = program.programId as PublicKey;
-const QUESTS = questsProgram.programId as PublicKey;
 
 // ---------------------------------------------------------------- stubs
 type Row = { publicKey: PublicKey; account: any };
@@ -67,7 +66,6 @@ const commits = {
   exploration: { publicKey: k(3), account: { user: wallet, randomness: k(73), seedSlot: bn(3_000), commitSlot: bn(3_001) } },
   forge: { publicKey: k(4), account: { user: wallet, randomness: k(74), seedSlot: bn(4_000), commitSlot: bn(4_001), toolMint: k(80), slotType: 2 } },
   lottery: { publicKey: k(5), account: { drawCommitted: true, drawn: false, randomness: k(75), seedSlot: bn(5_000), drawCommitSlot: bn(5_001) } },
-  drum: { publicKey: k(6), account: { user: wallet, randomness: k(76), seedSlot: bn(6_000), commitSlot: bn(6_001) } },
 };
 const lotteryNoise: Row[] = [
   { publicKey: k(15), account: { drawCommitted: false, drawn: false, randomness: k(85), seedSlot: bn(0), drawCommitSlot: bn(0) } },
@@ -77,7 +75,7 @@ let live: Record<string, Row[]> = {};
 const reset = () => {
   live = {
     packCommit: [commits.pack], rerollCommit: [commits.reroll], explorationCommit: [commits.exploration],
-    forgeCommit: [commits.forge], lotteryRound: [lotteryNoise[0], commits.lottery, lotteryNoise[1]], drumCommit: [commits.drum],
+    forgeCommit: [commits.forge], lotteryRound: [lotteryNoise[0], commits.lottery, lotteryNoise[1]],
     toolData: [],
   };
   for (const key of Object.keys(calls)) delete calls[key];
@@ -88,19 +86,15 @@ for (const name of ["packCommit", "rerollCommit", "explorationCommit", "forgeCom
 }
 stub(program.account.config, "config", () => [{ publicKey: pda.configPda()[0], account: cfg }]);
 stub(program.account.materialMints, "materialMints", () => [{ publicKey: pda.materialMintsPda()[0], account: mm }]);
-stub(questsProgram.account.drumCommit, "drumCommit", () => live.drumCommit);
 stub(questsProgram.account.questConfig, "questConfig", () => [{ publicKey: pda.questConfigPda()[0], account: qc }]);
 
-// Switchboard reveal: deterministic params + accounts, no gateway, no RPC.
-const revealParams = { signature: Array(64).fill(1), recoveryId: 0, value: Array(32).fill(2) };
-const sbAccounts = (prog: any, randomness: PublicKey) => ({
-  vrfSlot: vrfModule.vrfSlotPda(prog.programId, randomness), randomness, vrfAuthority: k(90), oracle: k(91), queue: k(92),
-  stats: k(93), recentSlothashes: k(94), rewardEscrow: k(95), wrappedSolMint: k(96), programState: k(97), switchboardProgram: k(98),
-});
-let revealCalls: Array<{ program: PublicKey; randomness: PublicKey; cranker: PublicKey }> = [];
-(vrfModule as any).vrfReveal = async (prog: any, _c: unknown, randomness: PublicKey, cranker: PublicKey) => {
-  revealCalls.push({ program: prog.programId, randomness, cranker });
-  return { params: revealParams, accounts: sbAccounts(prog, randomness) };
+// The five pack-path rooms call the live slot-hash reveal accounts. Record the
+// call, but do not put an oracle back into the instruction.
+const realPackPathReveal = vrfModule.packPathReveal.bind(vrfModule);
+let revealCalls: Array<{ program: PublicKey; randomness: PublicKey; cranker: PublicKey; path: "pack" }> = [];
+(vrfModule as any).packPathReveal = (prog: any, randomness: PublicKey) => {
+  revealCalls.push({ program: prog.programId, randomness, cranker: PublicKey.default, path: "pack" });
+  return realPackPathReveal(prog, randomness);
 };
 let currentSlot = 1_500;
 (connection as any).getSlot = async () => currentSlot;
@@ -155,8 +149,6 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     assert.equal(byMech.lottery.user, null, "a lottery draw has no paying player");
     assert.equal(byMech.lottery.commitSlot, 5_001, "lottery uses drawCommitSlot");
     assert.ok(byMech.lottery.address.equals(k(5)), "only the committed-and-not-drawn round is pending");
-    assert.ok(byMech.drum.address.equals(k(6)) && byMech.drum.randomness.equals(k(76)));
-    assert.equal(calls.drumCommit, 1, "drum commits come from the quests program");
     assert.equal(calls.lotteryRound, 1);
 
     reset();
@@ -165,9 +157,9 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     assert.deepEqual(calls, { packCommit: 1 }, "a filtered scan touches only the requested account type");
 
     reset();
-    const two = await settlement.listPendingCommits(["drum", "lottery"]);
-    assert.deepEqual(two.map((c) => c.mechanic), ["drum", "lottery"], "order follows the caller's list");
-    assert.deepEqual(Object.keys(calls).sort(), ["drumCommit", "lotteryRound"]);
+    const two = await settlement.listPendingCommits(["forge", "lottery"]);
+    assert.deepEqual(two.map((c) => c.mechanic), ["forge", "lottery"], "order follows the caller's list");
+    assert.deepEqual(Object.keys(calls).sort(), ["forgeCommit", "lotteryRound"]);
 
     reset();
     live.lotteryRound = lotteryNoise;
@@ -184,9 +176,6 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     assert.ok(lottery && lottery.user === null && lottery.commitSlot === 5_001 && lottery.seedSlot === 5_000);
     assert.equal(await settlement.fetchPendingCommit("lottery", k(15)), null, "draw not committed");
     assert.equal(await settlement.fetchPendingCommit("lottery", k(16)), null, "already drawn");
-    const drum = await settlement.fetchPendingCommit("drum", k(6));
-    assert.ok(drum && drum.user!.equals(wallet) && drum.commitSlot === 6_001);
-    assert.equal(await settlement.fetchPendingCommit("drum", k(1)), null, "a core pack commit is not a drum commit");
   }
 
   // ---- reveal wiring, mechanic by mechanic, against the committed IDL
@@ -194,8 +183,11 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   const config = pda.configPda()[0];
   const auth = pda.authPda()[0];
   const materialMints = pda.materialMintsPda()[0];
-  const sb = (prog: any, randomness: PublicKey) => ({ ...sbAccounts(prog, randomness), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SYSTEM });
-  const sbAta = (prog: any, randomness: PublicKey) => ({ ...sb(prog, randomness), associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID });
+  const slot = (randomness: PublicKey) => ({
+    vrfSlot: randomness, recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY,
+    tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
+  });
+  const slotAta = (randomness: PublicKey) => ({ ...slot(randomness), associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID });
   async function reveal(mechanic: Mechanic) {
     revealCalls = [];
     const commit = (await settlement.fetchPendingCommit(mechanic, commits[mechanic].publicKey))!;
@@ -204,7 +196,8 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     assert.equal(ixs.length, budget.length + 1, `${mechanic}: compute budget + one reveal instruction`);
     budget.forEach((b, i) => assert.ok(ixs[i].programId.equals(b.programId) && Buffer.compare(ixs[i].data, b.data) === 0, `${mechanic}: compute budget #${i}`));
     assert.equal(revealCalls.length, 1);
-    assert.ok(revealCalls[0].randomness.equals(commits[mechanic].account.randomness) && revealCalls[0].cranker.equals(cranker));
+    assert.equal(revealCalls[0].path, "pack", `${mechanic} reveal path`);
+    assert.ok(revealCalls[0].randomness.equals(commits[mechanic].account.randomness));
     return ixs[ixs.length - 1];
   }
   {
@@ -213,7 +206,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
       config, cranker, packCommit: k(1), user: wallet, treasury: cfg.treasury, mint, userToken: ata(mint, wallet),
       toolData: pda.toolPda(mint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
       metadata: pda.tokenMetadataPda(mint)[0],
-      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbAta(program, k(71)),
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...slotAta(k(71)),
     });
     assert.ok(revealCalls[0].program.equals(CORE));
   }
@@ -225,7 +218,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
       config, cranker, rerollCommit: k(2), user: vaultUser, treasury: cfg.treasury, newMint, newToken: ata(newMint, vaultUser),
       newToolData: pda.toolPda(newMint)[0], auth, toolMetadataRegistry: pda.toolMetadataRegistryPda()[0],
       metadata: pda.tokenMetadataPda(newMint)[0],
-      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...sbAta(program, k(72)),
+      tokenMetadataProgram: pda.TOKEN_METADATA_PROGRAM_ID, ...slotAta(k(72)),
     });
   }
   expectWiring(program, await reveal("exploration"), "exploreReveal", {
@@ -235,23 +228,14 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     escrowData: pda.resourceEscrowAta(cfg.dataMint), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
     escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint), escrowDataset: pda.resourceEscrowAta(mm.dataset),
     issuanceCapCircuit: pda.issuanceCapPda("circuit")[0], issuanceCapSilicon: pda.issuanceCapPda("silicon")[0],
-    ...sbAta(program, k(73)),
+    ...slotAta(k(73)),
   });
   expectWiring(program, await reveal("forge"), "forgeAttemptReveal", {
     config, auth, circuitMint: cfg.circuitMint, escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
     siliconMint: cfg.siliconMint, escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint), cranker,
-    enchantSlot: pda.enchantSlotPda(k(80), 2)[0], forgeCommit: k(4), user: wallet, treasury: cfg.treasury, ...sb(program, k(74)),
+    enchantSlot: pda.enchantSlotPda(k(80), 2)[0], forgeCommit: k(4), user: wallet, treasury: cfg.treasury, ...slot(k(74)),
   });
-  expectWiring(program, await reveal("lottery"), "drawLottery", { config, cranker, lotteryRound: k(5), treasury: cfg.treasury, ...sb(program, k(75)) });
-  {
-    const ix = await reveal("drum");
-    assert.ok(revealCalls[0].program.equals(QUESTS), "drum randomness lives in the quests program");
-    expectWiring(questsProgram, ix, "drumReveal", {
-      drumCommit: k(6), questConfig: pda.questConfigPda()[0], cranker, user: wallet, treasuryMascot: qc.treasuryMascot,
-      mascotMint: qc.mascotMint, userMascot: ata(qc.mascotMint, wallet), ...sbAta(questsProgram, k(76)),
-    });
-  }
-
+  expectWiring(program, await reveal("lottery"), "drawLottery", { config, cranker, lotteryRound: k(5), treasury: cfg.treasury, ...slot(k(75)) });
   // ---- refund wiring (permissionless expire after the reveal window)
   async function refund(mechanic: Mechanic) {
     const commit = (await settlement.fetchPendingCommit(mechanic, commits[mechanic].publicKey))!;
@@ -267,12 +251,11 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     }
     return ixs[ixs.length - 1];
   }
-  const slot = (prog: any, randomness: PublicKey) => vrfModule.vrfSlotPda(prog.programId, randomness);
-  expectWiring(program, await refund("pack"), "packOpenExpire", { config, packCommit: k(1), user: wallet, vrfSlot: slot(program, k(71)) });
+  expectWiring(program, await refund("pack"), "packOpenExpire", { config, packCommit: k(1), user: wallet, treasury: cfg.treasury, vrfSlot: k(71), recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY });
   {
     const newMint = pda.rerollMintPda(k(2))[0];
     expectWiring(program, await refund("reroll"), "rerollRandomExpire", {
-      config, cranker, rerollCommit: k(2), user: vaultUser, vrfSlot: slot(program, k(72)), newMint, newToken: ata(newMint, vaultUser),
+      config, cranker, rerollCommit: k(2), user: vaultUser, treasury: cfg.treasury, vrfSlot: k(72), recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY, newMint, newToken: ata(newMint, vaultUser),
       newToolData: pda.toolPda(newMint)[0], auth, tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
       toolMetadataRegistry: pda.toolMetadataRegistryPda()[0], metadata: pda.tokenMetadataPda(newMint)[0],
@@ -280,7 +263,7 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     });
   }
   expectWiring(program, await refund("exploration"), "exploreExpire", {
-    config, materialMints, explorationCommit: k(3), user: wallet, vrfSlot: slot(program, k(73)), auth,
+    config, materialMints, explorationCommit: k(3), user: wallet, vrfSlot: k(73), recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY, auth,
     dataMint: cfg.dataMint, userData: ata(cfg.dataMint, wallet), escrowData: pda.resourceEscrowAta(cfg.dataMint),
     circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
     siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint),
@@ -288,26 +271,20 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     tokenProgram: TOKEN_PROGRAM_ID,
   });
   expectWiring(program, await refund("forge"), "forgeAttemptExpire", {
-    config, forgeCommit: k(4), user: wallet, vrfSlot: slot(program, k(74)), auth,
+    config, forgeCommit: k(4), user: wallet, treasury: cfg.treasury, vrfSlot: k(74), recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY, auth,
     circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, wallet), escrowCircuit: pda.resourceEscrowAta(cfg.circuitMint),
     siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, wallet), escrowSilicon: pda.resourceEscrowAta(cfg.siliconMint),
     tokenProgram: TOKEN_PROGRAM_ID,
   });
-  expectWiring(program, await refund("lottery"), "expireLotteryDraw", { config, lotteryRound: k(5), vrfSlot: slot(program, k(75)) });
-  expectWiring(questsProgram, await refund("drum"), "drumExpire", {
-    drumCommit: k(6), questConfig: pda.questConfigPda()[0], cranker, user: wallet, treasuryMascot: qc.treasuryMascot, mascotMint: qc.mascotMint,
-    userMascot: ata(qc.mascotMint, wallet), vrfSlot: slot(questsProgram, k(76)), tokenProgram: TOKEN_PROGRAM_ID,
-    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID, systemProgram: SYSTEM,
-  });
-
+  expectWiring(program, await refund("lottery"), "expireLotteryDraw", { config, lotteryRound: k(5), vrfSlot: k(75), recentSlothashes: SYSVAR_SLOT_HASHES_PUBKEY });
   // ---- player self-settlement: ownership, phase split, who pays
   {
-    currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS - 1;
+    currentSlot = 1_001 + 129;
     const revealable = await settlement.selfSettleTransaction("pack", k(1), wallet);
     assert.deepEqual(revealable, { tx: "v0-base64-tx", phase: "revealable" });
     assert.deepEqual(v0CoSigned, { count: vrfModule.vrfComputeBudget().length + 1, payer: wallet.toBase58(), lastDisc: disc(program, "packOpenReveal") });
 
-    currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
+    currentSlot = 1_001 + 128 + 512;
     const refundable = await settlement.selfSettleTransaction("pack", k(1), wallet);
     assert.equal(refundable.phase, "refundable");
     assert.equal(coSigned!.lastDisc, disc(program, "packOpenExpire"), "after the window the player gets the refund path, never the reveal");
@@ -316,17 +293,17 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
     await assert.rejects(settlement.selfSettleTransaction("pack", k(1), k(41)), (e: any) => e.status === 403 && /another wallet/.test(e.message));
     await assert.rejects(settlement.selfSettleTransaction("pack", k(99), wallet), (e: any) => e.status === 409 && e.message === "COMMIT_ALREADY_SETTLED");
     // A lottery draw has no owner: any player may settle it.
-    currentSlot = 5_001;
+    currentSlot = 5_001 + 129;
     assert.equal((await settlement.selfSettleTransaction("lottery", k(5), k(42))).phase, "revealable");
     assert.equal(coSigned!.lastDisc, disc(program, "drawLottery"));
 
     // Exploration stays one atomic v0+ALT transaction in both settlement phases.
-    currentSlot = 3_001;
+    currentSlot = 3_001 + 129;
     const explorationReveal = await settlement.selfSettleTransaction("exploration", k(3), wallet);
     assert.deepEqual(explorationReveal, { tx: "v0-base64-tx", phase: "revealable" });
     assert.equal(v0CoSigned!.count, vrfModule.vrfComputeBudget().length + 1);
     assert.equal(v0CoSigned!.lastDisc, disc(program, "exploreReveal"));
-    currentSlot = 3_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
+    currentSlot = 3_001 + 128 + 512;
     const explorationRefund = await settlement.selfSettleTransaction("exploration", k(3), wallet);
     assert.deepEqual(explorationRefund, { tx: "v0-base64-tx", phase: "refundable" });
     assert.equal(v0CoSigned!.count, vrfModule.vrfComputeBudget().length + 4 + 1,
@@ -337,11 +314,11 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
 
   // ---- status from chain state only
   {
-    currentSlot = 1_001 + 100;
+    currentSlot = 1_001 + 129;
     assert.deepEqual(await settlement.commitStatus("pack", k(1)), {
-      state: "pending", phase: "revealable", commitSlot: 1_001, currentSlot: 1_101, refundAfterSlot: 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS,
+      state: "pending", phase: "revealable", commitSlot: 1_001, seedSlot: 1_000, currentSlot: 1_130, refundAfterSlot: 1_001 + 128 + 512,
     });
-    currentSlot = 1_001 + vrfModule.VRF_REFUND_AFTER_SLOTS;
+    currentSlot = 1_001 + 128 + 512;
     assert.equal((await settlement.commitStatus("pack", k(1)) as any).phase, "refundable");
 
     live.packCommit = [];
@@ -365,14 +342,13 @@ function expectWiring(prog: any, ix: TransactionInstruction, ixName: string, exp
   {
     assert.ok(settlement.settlementMint("pack", k(1))!.equals(pda.packMintPda(k(1))[0]));
     assert.ok(settlement.settlementMint("reroll", k(2))!.equals(pda.rerollMintPda(k(2))[0]));
-    for (const m of ["exploration", "forge", "lottery", "drum"] as Mechanic[]) assert.equal(settlement.settlementMint(m, k(3)), null);
-    assert.ok(settlement.drumCommitAddress(wallet).equals(pda.drumCommitPda(wallet)[0]));
+    for (const m of ["exploration", "forge", "lottery"] as Mechanic[]) assert.equal(settlement.settlementMint(m, k(3)), null);
     assert.equal(settlement.toBn("18446744073709551615").toString(), "18446744073709551615");
     assert.equal(settlement.toBn(7n).toNumber(), 7);
-    assert.deepEqual(settlement.MECHANICS, ["pack", "reroll", "exploration", "forge", "lottery", "drum"]);
+    assert.deepEqual(settlement.MECHANICS, ["pack", "reroll", "exploration", "forge", "lottery"]);
   }
 
-  console.log("vrf settlement self-test: discovery per mechanic, lottery filter, reveal + refund wiring vs IDL (6 mechanics), self-settlement ownership/phase, status passed");
+  console.log("vrf settlement self-test: discovery per mechanic, lottery filter, reveal + refund wiring vs IDL (5 mechanics), self-settlement ownership/phase, status passed");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

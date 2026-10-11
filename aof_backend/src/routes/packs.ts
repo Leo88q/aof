@@ -7,12 +7,12 @@ import { configPda, packCommitPda, packConfigPda, packMintPda } from "../lib/pda
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
-import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { publicErrorBody, randomNonce, releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
 
 /**
- * [F-06] Paid packs, settled by Switchboard On-Demand through the program's
- * own randomness pool (docs/VRF_SWITCHBOARD.md):
+ * [F-06] Paid packs. The program settles the roll from a future slot hash.
+ * Lottery, exploration reveal, forge and random reroll use this same commit.
  *
  *   POST /packs/commit   player + operator co-signed commit (price escrowed,
  *                        odds snapshotted, randomness committed, slot locked)
@@ -63,31 +63,36 @@ r.post("/commit", requireCircuitOpen, requireWalletLimits("packs_commit"), async
     const nonce = randomNonce();
     const [packCommit] = packCommitPda(user, nonce);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
-
-    const ix = await (program.methods as any)
-      .packOpenCommit(packTypeArg(index), new BN(nonce), maxPrice)
-      .accounts({
-        config: configPda()[0],
-        authority: AUTHORITY_PUBKEY,
-        user,
-        packConfig,
-        packCommit,
-        ...vrf,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    const tx = await coSign([ix], user);
-    res.json({
-      tx,
-      packCommit: packCommit.toBase58(),
-      mint: packMintPda(packCommit)[0].toBase58(),
-      nonce,
-      priceLamports: cfg.priceLamports.toString(),
-      maxPriceLamports: maxPrice.toString(),
-    });
+    try {
+      const vrf = await vrfCommitAccounts(program, connection, slot);
+      const ix = await (program.methods as any)
+        .packOpenCommit(packTypeArg(index), new BN(nonce), maxPrice)
+        .accounts({
+          config: configPda()[0],
+          authority: AUTHORITY_PUBKEY,
+          user,
+          packConfig,
+          packCommit,
+          ...vrf,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+      const tx = await coSign([ix], user);
+      res.json({
+        tx,
+        packCommit: packCommit.toBase58(),
+        mint: packMintPda(packCommit)[0].toBase58(),
+        nonce,
+        priceLamports: cfg.priceLamports.toString(),
+        maxPriceLamports: maxPrice.toString(),
+      });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
-    res.status(e.status || 400).json({ error: e.message });
+    const body = publicErrorBody(e);
+    res.status(body.status).json(body.body);
   }
 });
 

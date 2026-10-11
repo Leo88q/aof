@@ -12,7 +12,7 @@ name = "aof_core"
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-# Trust the devnet Switchboard On-Demand program in vrf.rs (mainnet otherwise).
+# Empty marker so devnet bringup can pass --features devnet. It does not select an oracle.
 devnet = []
 cpi = ["no-entrypoint"]
 default = []

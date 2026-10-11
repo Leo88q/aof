@@ -4,45 +4,16 @@ pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod state;
-pub mod vrf;
 
 pub use errors::*;
 pub use instructions::*;
 pub use state::*;
-pub use vrf::VrfRevealParams;
 
 declare_id!("2SLSduEGX9UDXH2h1P37ELzdPagJuV752favytPixdKc");
 
 #[program]
 pub mod aof_quests {
     use super::*;
-
-    /// Create a versioned, isolated MIND treasury ATA, initially paused.
-    /// Historical QuestConfig mints/commits remain on their original path.
-    pub fn init_mind_bank(ctx: Context<InitMindBank>) -> Result<()> {
-        instructions::drum::mind_bank::init_handler(ctx)
-    }
-
-    /// Operator pause for FUTURE V2 MIND commits only; settlements/refunds
-    /// must remain permissionless even when this switch is on.
-    pub fn set_mind_bank_paused(ctx: Context<SetMindBankPaused>, paused: bool) -> Result<()> {
-        instructions::drum::mind_bank::set_paused_handler(ctx, paused)
-    }
-
-    /// V2 custody, 5 whole MIND units per spin. Hard-disabled pending signed devnet validation.
-    pub fn mind_spin_commit(ctx: Context<MindSpinCommit>) -> Result<()> {
-        instructions::drum::mind_spin::commit_handler(ctx)
-    }
-
-    /// Existing V2 spins may settle even while the bank is paused.
-    pub fn mind_spin_reveal(ctx: Context<MindSpinReveal>, params: VrfRevealParams) -> Result<()> {
-        instructions::drum::mind_spin::reveal_handler(ctx, params)
-    }
-
-    /// Permissionless refund after the oracle reveal window closes.
-    pub fn mind_spin_expire(ctx: Context<MindSpinExpire>) -> Result<()> {
-        instructions::drum::mind_spin::expire_handler(ctx)
-    }
 
     // ===== [AUDIT F-02] two-step authority rotation =====
     pub fn set_pending_authority(ctx: Context<SetPendingAuthority>, new_authority: Pubkey) -> Result<()> {
@@ -93,28 +64,31 @@ pub mod aof_quests {
         instructions::challenges::challenge_contribute::handler(ctx, week_number, medals)
     }
 
-    /// [F-06] Paid spin committed to the program-owned Switchboard pool.
-    pub fn drum_commit(ctx: Context<DrumCommitCtx>) -> Result<()> {
-        instructions::drum::drum_commit::handler(ctx)
+    pub fn challenge_close(ctx: Context<ChallengeClose>, week_number: u32) -> Result<()> {
+        instructions::challenges::challenge_claim::close_handler(ctx, week_number)
     }
 
-    /// [F-06] Permissionless settlement with the oracle's signed value.
-    pub fn drum_reveal(ctx: Context<DrumReveal>, params: VrfRevealParams) -> Result<()> {
-        instructions::drum::drum_reveal::handler(ctx, params)
+    pub fn challenge_claim(ctx: Context<ChallengeClaim>, week_number: u32) -> Result<()> {
+        instructions::challenges::challenge_claim::claim_handler(ctx, week_number)
     }
 
-    /// [F-06] Refund a spin the oracle never revealed.
-    pub fn drum_expire(ctx: Context<DrumExpire>) -> Result<()> {
-        instructions::drum::drum_expire::handler(ctx)
+    pub fn claim_daily(ctx: Context<EngagementAccounts>) -> Result<()> {
+        instructions::engagement::claim_daily(ctx)
     }
 
-    /// [F-06] Authority: add pool randomness account #index.
-    pub fn vrf_pool_add(ctx: Context<QuestVrfPoolAdd>, index: u32, recent_slot: u64) -> Result<()> {
-        instructions::drum::vrf_pool::add_handler(ctx, index, recent_slot)
+    pub fn claim_comeback(ctx: Context<EngagementAccounts>) -> Result<()> {
+        instructions::engagement::claim_comeback(ctx)
     }
 
-    /// [F-06] Authority: retire / re-enable a free pool slot.
-    pub fn vrf_pool_set_retired(ctx: Context<QuestVrfPoolSetRetired>, retired: bool) -> Result<()> {
-        instructions::drum::vrf_pool::set_retired_handler(ctx, retired)
+    pub fn visit_neighbor(ctx: Context<NeighborVisit>) -> Result<()> {
+        instructions::engagement::visit_neighbor(ctx)
+    }
+
+    pub fn guild_deposit(ctx: Context<EngagementAccounts>, amount: u64) -> Result<()> {
+        instructions::engagement::guild_deposit(ctx, amount)
+    }
+
+    pub fn prove_quest_progress(ctx: Context<ProveQuestProgress>, quest_id: u32) -> Result<()> {
+        instructions::engagement::prove_quest(ctx, quest_id)
     }
 }

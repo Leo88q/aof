@@ -8,11 +8,11 @@ export const RARITY_META: Record<string, { color: string; label: string }> = {
 
 export const TOOL_ICON: Record<string, string> = {
   // Current NeuroForge tool art
-  plasma_cutter: "/assets/nfts/plasma-cutter.jpg",
-  silicon_extractor: "/assets/nfts/silicon-extractor.jpg",
-  data_harvester: "/assets/nfts/data-harvester.jpg",
-  quantum_transmitter: "/assets/nfts/quantum-transmitter.jpg",
-  neural_seeder: "/assets/nfts/neural-seeder.jpg",
+  plasma_cutter: "/assets/nfts/plasma-cutter.png",
+  silicon_extractor: "/assets/nfts/silicon-extractor.png",
+  data_harvester: "/assets/nfts/data-harvester.png",
+  quantum_transmitter: "/assets/nfts/quantum-transmitter.png",
+  neural_seeder: "/assets/nfts/neural-seeder.png",
 };
 
 /**

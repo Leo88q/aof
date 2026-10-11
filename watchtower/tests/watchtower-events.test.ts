@@ -139,32 +139,10 @@ const alice = hashPlayer(W.alice, SALT), bob = hashPlayer(W.bob, SALT);
 // Ignored events produce nothing; unknown events produce nothing (never guess).
 assert.equal(normalizeChainEvent(by("AuctionCreated"), SALT).length, 0);
 assert.equal(normalizeChainEvent({ ...by("Staked"), eventType: "SomethingNew" }, SALT).length, 0);
-// V2 external MIND is never merged with MIND/resource events. Preserve the
-// actual SPL mint and atomic units, and never invent a jackpot liability amount
-// absent from the on-chain event.
-{
-  const base = { ...by("Staked"), eventType: "MindSpinCommitted", wallet: W.alice, mint: null,
-    data: { user: W.alice, mint: M.tool2, commit: M.tool1, price_atoms: "5000000000", seed_slot: "123" } };
-  const [created] = normalizeChainEvent(base, SALT);
-  assert.equal(created.type, "LiabilityCreated");
-  assert.equal(created.playerId, alice);
-  assert.equal(created.asset, M.tool2);
-  assert.notEqual(created.asset, M.mind); // historical fixture mint is MIND, not an external MIND alias
-  assert.equal(created.currency, "MIND_ATOMS");
-  assert.equal(created.amount, null);
-  assert.equal(created.attributes.priceAtoms, "5000000000");
-  assert.equal(created.attributes.liability, "mind_spin_v2");
-  const [settled] = normalizeChainEvent({ ...base, eventType: "MindSpinRevealed",
-    data: { ...base.data, prize_atoms: "50000000000" } }, SALT);
-  assert.equal(settled.type, "LiabilitySettled");
-  assert.equal(settled.amount, "50000000000");
-  assert.equal(settled.attributes.outcome, "settled");
-  const [refunded] = normalizeChainEvent({ ...base, eventType: "MindSpinRefunded",
-    data: { ...base.data, amount_atoms: "5000000000" } }, SALT);
-  assert.equal(refunded.amount, "5000000000");
-  assert.equal(refunded.attributes.outcome, "refund");
-  assert.deepEqual(validateEvents([created, settled, refunded]), []);
-  assert.ok(!JSON.stringify([created, settled, refunded]).includes(W.alice));
+// Deleted drum and mind-spin events are not live liabilities. A historical row
+// must not be guessed into a payable obligation.
+for (const eventType of ["DrumCommitted", "DrumRevealed", "DrumRefunded", "MindSpinCommitted", "MindSpinRevealed", "MindSpinRefunded"]) {
+  assert.equal(normalizeChainEvent({ ...by("Staked"), eventType, wallet: W.alice }, SALT).length, 0, eventType);
 }
 // [§3.4] Перерождение: сброс сезона + сжигание излишка. Сброс виден как смена
 // состояния сессии, излишек — как сжигание; при нулевом излишке ноги сжигания

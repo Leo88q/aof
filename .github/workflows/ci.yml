@@ -1247,44 +1247,6 @@ jobs:
             echo "::warning::the artifact carries no synced Anchor.toml; keeping the checked-out copy"
           fi
 
-      - name: Cache the Switchboard test double build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/solana
-            tests/mock-switchboard/target
-          key: ${{ runner.os }}-mock-switchboard-${{ env.AGAVE_VERSION }}-${{ hashFiles('tests/mock-switchboard/src/**', 'tests/mock-switchboard/Cargo.toml', 'Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-mock-switchboard-${{ env.AGAVE_VERSION }}-
-
-      - name: Load the Switchboard test double at the Switchboard program id
-        # [F-06] tests/aof_vrf_localnet.ts runs the full VRF commit -> reveal ->
-        # settlement path on this validator. A Switchboard oracle cannot sign
-        # for a local chain, so tests/mock-switchboard (same discriminators,
-        # accounts, layout and state transitions; no enclave signature check)
-        # is built here and put into the validator's genesis at the mainnet
-        # Switchboard id the default build trusts. It exists only on this
-        # throwaway validator. The workspace Cargo.lock pins its dependencies.
-        # The output goes to /tmp/anchor-test.log too: when this step fails, the
-        # failure publisher posts that file (the Actions log endpoint is not
-        # reachable from every environment).
-        run: |
-          set -uo pipefail
-          export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-          cp Cargo.lock tests/mock-switchboard/Cargo.lock
-          {
-            echo "### building tests/mock-switchboard"
-            RUSTUP_TOOLCHAIN="$RUST_VERSION" cargo-build-sbf \
-              --manifest-path tests/mock-switchboard/Cargo.toml --sbf-out-dir target/mock 2>&1 | tail -60
-          } | tee -a /tmp/anchor-test.log
-          if [ ! -f target/mock/mock_switchboard.so ]; then
-            echo "::error::the Switchboard test double did not build" | tee -a /tmp/anchor-test.log
-            exit 1
-          fi
-          ls -l target/mock/mock_switchboard.so
-          printf '\n[[test.genesis]]\naddress = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"\nprogram = "target/mock/mock_switchboard.so"\n' >> Anchor.toml
-          tail -4 Anchor.toml
-
       - name: Report the build-time program id sync
         # The Actions log endpoint is not reachable from every environment, so
         # the programs job ships its sync report inside the artifact. Everything
@@ -1449,9 +1411,8 @@ jobs:
         id: anchor_test
         if: steps.idl_check.outputs.available == 'true'
         env:
-          # The Switchboard double is loaded above. The 18k-slot expiry case runs
-          # separately with an accelerated validator after the regular suite.
-          AOF_REQUIRE_SWITCHBOARD_MOCK: "1"
+          # Slot-hash settlement does not load an oracle double. The expiry case
+          # still runs separately with an accelerated validator after the suite.
           AOF_TEST_VRF_EXPIRY: "0"
         run: |
           set -uo pipefail

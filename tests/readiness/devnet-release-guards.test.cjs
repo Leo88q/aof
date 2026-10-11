@@ -7,32 +7,28 @@ const { spawnSync } = require('node:child_process');
 const root = join(__dirname, '../..');
 const source = path => readFileSync(join(root, path), 'utf8');
 
-test('paid Mind stays fail-closed; season purchase uses separate ledgers and remains UI-gated pending acceptance', () => {
-  assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/);
+test('drum and mind-spin stay deleted; paid season sales stay UI-gated', () => {
+  const { existsSync } = require('node:fs');
+  for (const rel of [
+    'aof_backend/src/routes/drum.ts',
+    'programs/aof-quests/src/instructions/drum/drum_commit.rs',
+    'programs/aof-quests/src/instructions/drum/mind_spin.rs',
+    'frontend/src/components/DrumSpin.tsx',
+  ]) {
+    assert.equal(existsSync(join(root, rel)), false, `${rel} returned`);
+  }
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/config\/init"[^\n]*\n\s*res\.status\(503\)/);
   assert.match(source('aof_backend/src/routes/quests.ts'), /r\.post\("\/quest\/init"[^\n]*\n\s*res\.status\(503\)/);
   const seasonRoute = source('aof_backend/src/routes/season.ts');
   assert.match(seasonRoute, /r\.post\("\/pass\/purchase", requirePaidSeasonPassSales, requireWalletProof/);
   assert.match(seasonRoute, /SEASON_PREMIUM_CLAIMS_ACCOUNT_SIZE/);
   assert.match(seasonRoute, /coSignQuoted\(\[ix\], user/);
-  assert.match(source('programs/aof-quests/src/instructions/drum/drum_commit.rs'), /pub fn handler[^\n]*\{[\s\S]{0,360}require!\(false, QuestError::Paused\)/);
-  const v2 = source('programs/aof-quests/src/instructions/drum/mind_spin.rs');
-  assert.match(v2, /pub fn commit_handler[^\n]*\{[\s\S]{0,500}require!\(false, QuestError::FeatureDisabled\)/);
-  assert.match(v2, /seeds = \[COMMIT_SEED, user\.key\(\)\.as_ref\(\)\]/);
-  assert.match(v2, /pub mind_commit: Account<'info, MindCommit>/);
-  assert.match(v2, /mind_bank\.reserve\(ctx\.accounts\.mind_vault\.amount\)/);
-  assert.match(v2, /mind_bank\.release\(ctx\.accounts\.mind_vault\.amount, MIND_SPIN_PRICE\)/);
-  assert.doesNotMatch(v2, /DrumCommitted|DrumRevealed|DrumRefunded/);
-  assert.match(source('programs/aof-quests/src/instructions/drum/mind_bank.rs'), /bank\.paused = true/);
   const seasonProgram = source('aof-core/src/instructions/season.rs');
-  assert.match(seasonProgram, /require!\(false, AofError::SeasonPremiumRequired\)/,
-    'direct on-chain pass purchases remain closed until the Devnet acceptance gate passes');
+  assert.match(seasonProgram, /pub fn purchase_pass_handler/);
+  assert.doesNotMatch(seasonProgram, /require!\(\s*false/, 'season purchase must not be a hard stub');
   assert.match(seasonProgram, /pub fn claim_premium_reward_handler/);
   assert.match(seasonProgram, /premium_claims\.claimed_bitmap/);
-  assert.match(source('aof_backend/src/routes/drum.ts'), /r\.post\("\/reveal", requireWalletLimits/);
-  assert.match(source('aof_backend/src/routes/drum.ts'), /r\.get\("\/status\/:user"/);
   assert.match(source('frontend/src/pages/profile/SeasonPassPage.tsx'), /const PAID_PASS_READY = false/);
-  assert.doesNotMatch(source('frontend/src/components/DrumSpin.tsx'), /api\.drum\.commit\(/);
 });
 
 test('mining boots disabled and front/back check live on-chain availability', () => {

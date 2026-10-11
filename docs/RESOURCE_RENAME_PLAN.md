@@ -1,6 +1,6 @@
 # План переименования ресурсов (шаг C пункта 12)
 
-Результат rename-scan: **чисто — legacy-идентификаторов в active code: 0**.
+Результат rename-scan: **есть остатки — 26 legacy-идентификаторов в active code** (см. таблицу слоёв).
 Статус шага C: **ОТКРЫТ — не завершён и не принят**. Нулевой scan подтверждает только отсутствие активных legacy identifiers; это не закрывает остальные acceptance gates.
 Документ собирается `node scripts/resource-rename-plan.mjs --write`, гейт — `--check`
 (`tests/readiness/resource-rename-plan.test.cjs`). Источники: `docs/RESOURCE_MANIFEST.json`
@@ -13,12 +13,33 @@
 
 | Слой | Файлов проверено | Остатков | Статус |
 |---|---:|---:|---|
-| Rust (aof-core/src, programs/*/src) | 138 | 0 | ✅ чисто |
+| Rust (aof-core/src, programs/*/src) | 131 | 13 | ⚠️ переименовать |
 | IDL и TS-типы (aof_backend/src/idl) | 7 | 0 | ✅ чисто |
-| Backend (aof_backend/src, aof_backend/scripts) | 195 | 0 | ✅ чисто |
-| Frontend (frontend/src) | 269 | 0 | ✅ чисто |
+| Backend (aof_backend/src, aof_backend/scripts) | 202 | 1 | ⚠️ переименовать |
+| Frontend (frontend/src) | 286 | 12 | ⚠️ переименовать |
 | Game (game/) | 72 | 0 | ✅ чисто |
-| Тесты и скрипты (tests, scripts) | 130 | 0 | ✅ чисто |
+| Тесты и скрипты (tests, scripts) | 136 | 0 | ✅ чисто |
+
+Остатки в слое «Rust (aof-core/src, programs/*/src)»: **13** в 2 файле(ах).
+
+| Файл | Найдено | Примеры (строка → токен) |
+|---|---:|---|
+| `aof-core/src/vrf.rs` | 8 | `90: seeds`, `92: seeds`, `94: seeds` |
+| `aof-core/src/security_checklist_tests.rs` | 5 | `2053: seeds`, `2062: seeds`, `2063: seeds` |
+
+Остатки в слое «Backend (aof_backend/src, aof_backend/scripts)»: **1** в 1 файле(ах).
+
+| Файл | Найдено | Примеры (строка → токен) |
+|---|---:|---|
+| `aof_backend/src/routes/lottery.ts` | 1 | `30: "` |
+
+Остатки в слое «Frontend (frontend/src)»: **12** в 3 файле(ах).
+
+| Файл | Найдено | Примеры (строка → токен) |
+|---|---:|---|
+| `frontend/src/i18n/lotteryCopy.ts` | 8 | `13: potato`, `30: '`, `52: '` |
+| `frontend/src/pages/market/LotteryHall.tsx` | 3 | `13: "`, `15: "`, `52: potato` |
+| `frontend/src/lib/visualAssets.ts` | 1 | `15: potato` |
 
 Правило гейта: остаток — это имя ресурса или старое имя инструкции, использованное как идентификатор.
 Шаг C переименовал все farming-инструкции (deployment не выполнялся, дискриминаторы пересчитаны
@@ -138,15 +159,15 @@ runtime-кодом продукта — это проверяется тем ж�
 * переставлять варианты `ResourceKind` или сдвигать коды ошибок;
 * удалять AmberQuartz, SoulCore, Data, Dataset, Compute, Mind и связанные mint-поля/капы до отдельного
   решения владельца;
-* трогать семь отключённых инструкций из `docs/DEAD_CODE_EVIDENCE.md`;
+* возвращать удалённые механики: барабан удачи, mind-spin, лук, скины, Switchboard и SKR-скидки;
 * возвращать старые имена инструкций или создавать compatibility alias — шаг C их удалил;
 * смешивать переименование с изменением экономики (формулы, капы, награды).
 
 ## Классификация на момент утверждения
 
-* active-player (25): Data, Circuit, Silicon, Neuron, Synapse, Signal, Model, Power, Compute, Dataset, BlueCore, PurpleCore, RedCore, ClearQuartz, RoseQuartz, QuantumBit, NeuralChip, PhotonBit, BioChip, CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid, Mind;
+* active-player (27): Data, Circuit, Silicon, Neuron, Synapse, Signal, Model, Power, Compute, Dataset, BlueCore, PurpleCore, RedCore, ClearQuartz, RoseQuartz, AmberQuartz, QuantumBit, NeuralChip, PhotonBit, BioChip, CryoFluid, VoltFluid, BioFluid, NanoFluid, QuantumFluid, SoulCore, Mind;
 * active-internal (0): —;
-* candidate-dead (2): AmberQuartz, SoulCore.
+* candidate-dead (0): .
 
 Статусы выведены из кода (`docs/RESOURCE_EVIDENCE.md`), а не назначены руками; удаление кандидатов
 делается отдельным шагом после утверждения, не вместе с переименованием.

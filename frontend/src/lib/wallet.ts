@@ -3,18 +3,31 @@ import { walletRuntimeCopy } from "../i18n/walletRuntimeCopy";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import type { TransactionIntent } from "./transactionIntent";
 import { confirmSignature } from "./confirmation";
+import { showTxTrap } from "./txTrap";
 import {
   Connection,
   PublicKey,
+  SystemProgram,
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
 
 const walletText = () => walletRuntimeCopy[getApiErrorLanguage()];
 
-const configuredRpc = (import.meta as any).env?.VITE_RPC_URL as string | undefined;
-
-// Safe fallback to public Solana RPC if VITE_RPC_URL is not explicitly configured
+const configuredRpc = typeof import.meta.env.VITE_RPC_URL === "string"
+  ? import.meta.env.VITE_RPC_URL.trim()
+  : "";
+// Dev server may omit the URL. A production bundle must not silently use devnet.
+if (import.meta.env.PROD && configuredRpc === "") {
+  throw new Error("VITE_RPC_URL is required in a production bundle");
+}
+if (import.meta.env.PROD && import.meta.env.VITE_CLUSTER === "mainnet"
+    && /devnet|testnet|localhost|127\.0\.0\.1|\[::1\]/i.test(configuredRpc)) {
+  throw new Error("mainnet bundle refuses a devnet, testnet, or local RPC");
+}
+if (import.meta.env.PROD && /api[-_]?key=|@/i.test(configuredRpc)) {
+  throw new Error("VITE_RPC_URL is public and must not contain credentials");
+}
 export const RPC = configuredRpc || "https://api.devnet.solana.com";
 export const connection = new Connection(RPC, "confirmed");
 
@@ -38,10 +51,10 @@ function standardProvider(wallet: any) {
   return {
     isStandard: true,
     name: typeof wallet.name === "string" && wallet.name ? wallet.name : "Standard wallet",
-    connect: async () => {
+    connect: async (options?: { silent?: boolean }) => {
       const feature = wallet.features?.["standard:connect"];
       if (typeof feature?.connect === "function") {
-        const out = await feature.connect({ silent: false });
+        const out = await feature.connect({ silent: options?.silent === true });
         account = out?.accounts?.[0] ?? account ?? null;
       }
       account = account || wallet.accounts?.[0] || null;
@@ -125,7 +138,7 @@ export function phantomBrowseLink(url?: string): string {
 export interface WalletAdapter {
   available: boolean;
   name: string;
-  connect: () => Promise<PublicKey>;
+  connect: (options?: { silent?: boolean }) => Promise<PublicKey>;
   disconnect: () => Promise<void>;
   signMessage: (message: string) => Promise<string>;
   signAndSend: (txBase64: string, intent?: TransactionIntent) => Promise<string>;
@@ -154,8 +167,8 @@ export function createWalletAdapter(): WalletAdapter {
   return {
     available: true,
     name: provider.isStandard ? provider.name : provider.isPhantom ? "Phantom" : "Backpack",
-    connect: async () => {
-      const resp = await provider.connect();
+    connect: async (options?: { silent?: boolean }) => {
+      const resp = await provider.connect(options?.silent ? { onlyIfTrusted: true } : undefined);
       return new PublicKey(resp.publicKey.toString());
     },
     disconnect: async () => {
@@ -175,11 +188,20 @@ export function createWalletAdapter(): WalletAdapter {
       const user = new PublicKey(provider.publicKey.toString());
       const { guardTransaction, getAofGuardConfig } = await import("./txGuard");
       const guard = await guardTransaction(tx, user, { ...getAofGuardConfig(), intent });
-      if (!guard.safe) throw new LocalTxFeedbackError(guard.reason || walletText().unavailable);
+      if (!guard.safe) {
+        const error = new LocalTxFeedbackError(guard.reason || walletText().unavailable) as LocalTxFeedbackError & { causeMessage?: string };
+        if (guard.cause) error.causeMessage = guard.cause;
+        throw error;
+      }
       if (!provider.publicKey || !new PublicKey(provider.publicKey.toString()).equals(user)) {
         throw new Error("Wallet changed during transaction verification");
       }
-      const { signature } = await provider.signAndSendTransaction(tx);
+      // The operator has already partially signed. Phantom's signAndSendTransaction
+      // shows the approval and then fails inside the extension with JSON-RPC
+      // -32603 and no signature, so the payment never reaches the cluster.
+      // Ask the wallet only for the missing signature and broadcast the same
+      // bytes through the game RPC that guardTransaction already simulated.
+      const signature = await signThenBroadcast(provider, tx);
       try {
         await confirmSignature(connection, signature);
       } catch (cause) {
@@ -187,11 +209,75 @@ export function createWalletAdapter(): WalletAdapter {
         // signature; otherwise callers can mistake it for a safe retry.
         const error = cause instanceof Error ? cause : new Error(String(cause));
         (error as Error & { signature?: string }).signature = signature;
+        showTxTrap("confirm", error);
         throw error;
       }
       return signature;
     },
   };
+}
+
+
+function expiredBlockhash(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /blockhash not found/i.test(message);
+}
+
+function isDurableNonceTransaction(tx: Transaction | VersionedTransaction): boolean {
+  const opcode = (data: Uint8Array | undefined) =>
+    !!data && data.length >= 4 && data[0] === 4 && data[1] === 0 && data[2] === 0 && data[3] === 0;
+  if (tx instanceof Transaction) {
+    const first = tx.instructions[0];
+    return !!first && first.programId.equals(SystemProgram.programId) && opcode(first.data);
+  }
+  const message = tx.message;
+  const first = message.compiledInstructions?.[0];
+  const keys = "staticAccountKeys" in message
+    ? message.staticAccountKeys
+    : (message as { accountKeys: PublicKey[] }).accountKeys;
+  const program = first ? keys[first.programIdIndex] : undefined;
+  return !!program && program.equals(SystemProgram.programId) && opcode(first?.data);
+}
+
+async function assertLiveBlockhash(tx: Transaction | VersionedTransaction): Promise<void> {
+  if (isDurableNonceTransaction(tx)) return;
+  const hash = tx instanceof Transaction ? tx.recentBlockhash : tx.message.recentBlockhash;
+  if (!hash) throw new LocalTxFeedbackError(walletText().blockhashExpired);
+  try {
+    const valid = await connection.isBlockhashValid(hash, { commitment: "confirmed" });
+    if (!valid.value) throw new LocalTxFeedbackError(walletText().blockhashExpired);
+  } catch (error) {
+    if (error instanceof LocalTxFeedbackError) throw error;
+  }
+}
+
+async function signThenBroadcast(provider: any, tx: Transaction | VersionedTransaction): Promise<string> {
+  await assertLiveBlockhash(tx);
+  if (typeof provider.signTransaction !== "function") {
+    try {
+      const sent = await provider.signAndSendTransaction(tx);
+      if (!sent?.signature || typeof sent.signature !== "string") throw new Error(walletText().missingTxSignature);
+      return sent.signature;
+    } catch (error) {
+      showTxTrap("phantom-sign-and-send", error);
+      throw error;
+    }
+  }
+  let signed: Transaction | VersionedTransaction;
+  try {
+    signed = await provider.signTransaction(tx);
+  } catch (error) {
+    showTxTrap("phantom-sign", error);
+    throw error;
+  }
+  try {
+    const raw = signed.serialize();
+    return await connection.sendRawTransaction(raw, { skipPreflight: false, preflightCommitment: "confirmed" });
+  } catch (error) {
+    showTxTrap("rpc-send", error);
+    if (expiredBlockhash(error)) throw new LocalTxFeedbackError(walletText().blockhashExpired);
+    throw error;
+  }
 }
 
 export async function signAndSendTx(txBase64: string, intent?: TransactionIntent): Promise<string> {

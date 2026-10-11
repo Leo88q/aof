@@ -12,6 +12,9 @@ import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { UI_ICONS, toolPlate } from "../../lib/visualAssets";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { PackPlate } from "../../components/visual/PackPlate";
+import { PackReveal } from "../../components/visual/PackReveal";
+import { chainMomentCopy } from "../../i18n/chainMomentCopy";
+import { toolLineKey } from "../../lib/chainMoments";
 import { useFlash } from "../../lib/marketUtils";
 import type { PackOpenIntent } from "../../lib/transactionIntent";
 import { actionErrorFeedback, LocalTxFeedbackError } from "../../lib/txResponseFeedback";
@@ -19,17 +22,18 @@ import { walletRuntimeCopy } from "../../i18n/walletRuntimeCopy";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
 
 /**
- * [F-06] Capsule openings settled by Switchboard On-Demand.
+ * [F-06] Capsule openings. The program settles the roll from a future slot hash.
  *
  * 1. commit  — one wallet signature: the price is escrowed on-chain, the odds
- *    are snapshotted and a Switchboard randomness account owned by the game
- *    program is committed in the same transaction (the operator co-signs as
- *    the backend gate; the wallet guard checks type and price ceiling).
+ *    are snapshotted and a pool slot is locked in the same transaction (the
+ *    operator co-signs as the backend gate; the wallet guard checks type and
+ *    price ceiling).
  * 2. settle  — the settler service reveals within seconds. If it does not,
  *    the player can settle it personally ("Раскрыть самостоятельно"): the
- *    reveal is permissionless and the oracle signature is verified on-chain.
- * 3. refund  — if the oracle never answers inside the ~2 h window, the same
- *    button returns the price (settlement and refund are never both open).
+ *    reveal is permissionless. The program reads the future slot hash and
+ *    ignores the passed signature.
+ * 3. refund  — if that slot produces no hash before the window closes, the
+ *    same button returns the price (settlement and refund are never both open).
  */
 const PACKS = [
   { id: "small", index: 0 },
@@ -40,7 +44,7 @@ const SELF_SETTLE_AFTER_MS = 25_000;
 
 type PackConfig = { packType: string; priceLamports: string; oddsBps: number[] };
 type Opening = { packCommit: string; startedAt: number; state: "pending" | "settled" | "refunded"; tool?: { toolType: string; rarity: string } };
-type Pending = { mechanic: string; commit: string; phase: "revealable" | "refundable"; ageSlots: number };
+type Pending = { mechanic: string; commit: string; phase: "waiting" | "revealable" | "refundable"; ageSlots: number };
 
 export function PacksPage() {
   const { language } = useLocale();
@@ -51,6 +55,7 @@ export function PacksPage() {
   const [configFailed, setConfigFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [opening, setOpening] = useState<Opening | null>(null);
+  const [showReveal, setShowReveal] = useState(false);
   // Размер последней открытой капсулы: витрина должна показывать ту капсулу,
   // которую игрок действительно открыл, а не условную иконку.
   const [lastPack, setLastPack] = useState<"small" | "medium" | "big" | null>(null);
@@ -96,7 +101,7 @@ export function PacksPage() {
         if (!Array.isArray(r?.pending)) throw new Error("Unexpected pending openings");
         const openings = r.pending.filter((p: Pending) => p.mechanic === "pack");
         if (!openings.every((p: Pending) => typeof p.commit === "string" && p.commit.length > 0 &&
-          (p.phase === "revealable" || p.phase === "refundable") &&
+          (p.phase === "waiting" || p.phase === "revealable" || p.phase === "refundable") &&
           Number.isFinite(p.ageSlots))) throw new Error("Invalid pending opening");
         if (request === pendingRequestId.current) {
           setPending(openings);
@@ -192,6 +197,10 @@ export function PacksPage() {
   }
 
   const waitingMs = opening?.state === "pending" ? now - opening.startedAt : 0;
+  const openingKey = opening ? `${opening.state}:${opening.packCommit}` : "";
+  useEffect(() => {
+    if (openingKey) setShowReveal(true);
+  }, [openingKey]);
   const formatPercent = (bps: number) => (bps / 100).toLocaleString(language, { maximumFractionDigits: 2 });
 
   return (
@@ -202,6 +211,7 @@ export function PacksPage() {
       <p className="text-straw text-xs">
         {copy.intro}
       </p>
+      <p className="text-straw text-xs break-words">{chainMomentCopy[language].capsuleOnly}</p>
 
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
@@ -210,11 +220,23 @@ export function PacksPage() {
         </motion.div>
       )}
 
+      <PackReveal
+        open={!!opening && showReveal}
+        caption={opening?.state === "pending" ? `${copy.waiting} ${Math.floor(waitingMs / 1000)} ${copy.seconds}` : opening?.state === "settled" && opening.tool ? toolName(language, opening.tool.toolType) : opening?.state === "refunded" ? copy.refunded : opening?.state === "settled" ? copy.settledUnknown : ""}
+      >
+        {opening?.state === "pending" && waitingMs > SELF_SETTLE_AFTER_MS && (
+          <button type="button" onClick={() => selfSettle(opening.packCommit)} disabled={busy === opening.packCommit}
+            className="pack-reveal__action">
+            {copy.revealSelf}
+          </button>
+        )}
+        <button type="button" onClick={() => setShowReveal(false)} className="pack-reveal__hide">{copy.hideReveal}</button>
+      </PackReveal>
       {opening && (
         <Card className="text-center py-5">
           {opening.state === "pending" && (
             <>
-              {/* Витрина размера, пока оракул считает: раньше здесь дрожала
+              {/* Витрина размера, пока программа ждёт слот: раньше здесь дрожала
                   одна и та же иконка, и по картинке нельзя было понять,
                   какую капсулу открываешь. */}
               {lastPack && (
@@ -243,6 +265,7 @@ export function PacksPage() {
                 {rarities[TOOL_RARITIES.indexOf(rarityKey(opening.tool.rarity) as typeof TOOL_RARITIES[number])] || toolsCopy[language].card.unknownRarity}
               </p>
               <p className="text-parchment text-sm">{toolName(language, opening.tool.toolType)}</p>
+              <p className="text-straw text-xs break-words">{(() => { const line = toolLineKey(String(opening.tool.toolType)); return line ? chainMomentCopy[language].toolLine[line] : chainMomentCopy[language].unknownLine; })()}</p>
             </>
           )}
           {opening.state === "settled" && !opening.tool && <p className="text-parchment text-sm">{copy.settledUnknown}</p>}
@@ -306,8 +329,8 @@ export function PacksPage() {
           <p className="text-parchment font-semibold text-sm mb-2">{copy.pendingTitle}</p>
           {visiblePending.map((p) => (
             <div key={p.commit} className="flex flex-wrap items-center justify-between gap-2 text-xs py-1 min-w-0">
-              <span className="text-straw">{p.commit.slice(0, 8)}… · {p.phase === "refundable" ? copy.refundable : `${p.ageSlots} ${copy.waitingSlots}`}</span>
-              <button onClick={() => selfSettle(p.commit)} disabled={busy === p.commit}
+              <span className="text-straw">{p.commit.slice(0, 8)}… · {p.phase === "refundable" ? copy.refundable : p.phase === "waiting" ? copy.seedPending : `${p.ageSlots} ${copy.waitingSlots}`}</span>
+              <button onClick={() => selfSettle(p.commit)} disabled={busy === p.commit || p.phase === "waiting"}
                 className="px-3 py-1 rounded-lg bg-soil-800 border border-straw/20 text-parchment disabled:opacity-40">
                 {p.phase === "refundable" ? copy.refund : copy.reveal}
               </button>

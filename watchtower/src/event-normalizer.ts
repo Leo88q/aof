@@ -88,19 +88,18 @@ export const SUPPORTED_NATIVE: Record<string, string[]> = {
   CraftCompleted: ["ToolCrafted", "CraftEvent", "ToolRepaired"],
   FusionCompleted: ["RerollResult", "ForgeAttempted"],
   PackOpened: ["PackOpened"],
-  QuestCompleted: ["QuestRewardClaimed", "AchievementUnlocked", "ExplorationCompleted", "ChallengeContributed"],
+  QuestCompleted: ["QuestRewardClaimed", "AchievementUnlocked", "ExplorationCompleted", "ChallengeContributed", "QuestProgressProven", "ChallengePayoutClaimed"],
   StakeStarted: ["Staked", "CollectorStaked"],
   StakeEnded: ["Unstaked", "CollectorUnstaked"],
-  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "SeasonPremiumRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded"],
+  RewardGranted: ["MiningCollected", "ExplorationCompleted", "ReferralPayout", "LotteryClaimed", "SeasonRewardClaimed", "SeasonPremiumRewardClaimed", "PaidOut", "QuestRewardClaimed", "LotteryRoundRefunded", "DailyClaimed", "ComebackClaimed", "ChallengePayoutClaimed"],
   RewardClaimed: ["ResourceIssued"],
   TokenMinted: ["ResourceIssued", "ToolMinted"],
   TokenBurned: ["ToolBurned", "ToolCrafted", "RerollResult", "RebirthReset"],
-  TreasuryDeposited: ["ResourceIssued", "GasFeesSwept"],
+  TreasuryDeposited: ["ResourceIssued", "GasFeesSwept", "GuildDeposited"],
   TreasuryWithdrawn: ["PaidOut", "VaultWithdrawal"],
-  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted",
-    "DrumCommitted", "MindSpinCommitted"],
+  LiabilityCreated: ["AuctionBid", "OrderPlaced", "LimitOrderPlaced", "OfferCreated", "ListingCreated", "ReferralBound", "VrfCommitted"],
   LiabilitySettled: ["PackCommitExpired", "ForgeCommitExpired", "AuctionSettled", "OrderMatched", "LimitOrderMatched",
-    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded", "DrumRevealed", "DrumRefunded", "MindSpinRevealed", "MindSpinRefunded"],
+    "VrfSettled", "VrfCommitRefunded", "LotteryTicketRefunded"],
   ConfigUpdated: ["IssuanceCapChanged", "IssuanceLifetimeBaselineSet", "FeesUpdated", "ResourceMintsUpdated", "CraftEconomyUpdated", "QuestConfigInitialized", "HotMarketCranked", "HotMarketEventStarted",
     "VaultGuardChanged", "MiningToggled", "SupplyCapChanged", "CollectorMintRegistered", "PlayerCapacityChanged",
     "AuthorityRotationCancelled", "PackConfigChanged", "RerollConfigChanged", "SeasonInitialized", "SeasonXpGranted",
@@ -298,9 +297,8 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "ForgeCommitExpired":
       emit("LiabilitySettled", { asset: str(d.toolMint), amount: str(d.refundedLamports), currency: LAMPORTS, attributes: { liability: "forge_commit", outcome: "refund", circuitRefunded: str(d.circuitRefunded), siliconRefunded: str(d.siliconRefunded) } });
       break;
-    // ---- [F-06] Switchboard On-Demand settlement ------------------------------
     // A VrfCommitted without a VrfSettled / VrfCommitRefunded is a stuck
-    // commit: Watchtower's liability ageing is the alert.
+    // slot-hash commit: Watchtower's liability ageing is the alert.
     case "VrfCommitted":
       emit("LiabilityCreated", { playerId: pid(d.user), amount: str(d.escrowLamports), currency: LAMPORTS,
         attributes: { liability: "vrf_commit", mechanic: str(d.mechanic), commit: str(d.commit), seedSlot: str(d.seedSlot) } });
@@ -316,37 +314,6 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "LotteryTicketRefunded":
       emit("LiabilitySettled", { playerId: pid(d.buyer), amount: str(d.lamports), currency: LAMPORTS,
         attributes: { liability: "lottery_ticket", outcome: "refund", roundId: str(d.roundId), ticketNumber: str(d.ticketNumber) } });
-      break;
-    // The drum (aof-quests) has its own events; its commit PDA is per user, so
-    // the player is the liability key. A DrumCommitted without DrumRevealed /
-    // DrumRefunded ages like any other stuck VRF commit.
-    case "DrumCommitted":
-      emit("LiabilityCreated", { playerId: pid(d.user), currency: "RESOURCE",
-        attributes: { liability: "drum_spin", commit: str(d.user), seedSlot: str(d.seedSlot) } });
-      break;
-    case "DrumRevealed":
-      emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.prize), currency: "RESOURCE",
-        attributes: { liability: "drum_spin", outcome: "settled", commit: str(d.user), seedSlot: str(d.seedSlot) } });
-      break;
-    case "DrumRefunded":
-      emit("LiabilitySettled", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE",
-        attributes: { liability: "drum_spin", outcome: "refund", commit: str(d.user) } });
-      break;
-    // V2 is a distinct external SPL mint. Never label its atomic amounts as
-    // legacy MIND/RESOURCE or coalesce the two PDA/discriminator families.
-    // The committed event exposes the price, NOT the entire reserved liability;
-    // do not fabricate a 50-token amount in the event stream.
-    case "MindSpinCommitted":
-      emit("LiabilityCreated", { playerId: pid(d.user), asset: str(d.mint), currency: "MIND_ATOMS",
-        attributes: { liability: "mind_spin_v2", commit: str(d.commit), priceAtoms: str(d.price_atoms), seedSlot: str(d.seed_slot) } });
-      break;
-    case "MindSpinRevealed":
-      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.prize_atoms), currency: "MIND_ATOMS",
-        attributes: { liability: "mind_spin_v2", outcome: "settled", commit: str(d.commit), seedSlot: str(d.seed_slot) } });
-      break;
-    case "MindSpinRefunded":
-      emit("LiabilitySettled", { playerId: pid(d.user), asset: str(d.mint), amount: str(d.amount_atoms), currency: "MIND_ATOMS",
-        attributes: { liability: "mind_spin_v2", outcome: "refund", commit: str(d.commit) } });
       break;
     case "VrfSlotAdded":
       emit("ConfigUpdated", { playerId: null, attributes: { setting: "vrf_pool", action: "add", index: str(d.index), vrfSlot: str(d.vrfSlot) } });
@@ -417,6 +384,22 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     case "QuestRewardClaimed":
       emit("QuestCompleted", { attributes: { questId: str(d.questId) } });
       emit("RewardGranted", { asset: str(d.rewardMascot), amount: "1", currency: "NFT", attributes: { source: "quest", questId: str(d.questId) } });
+      break;
+    case "DailyClaimed":
+      emit("RewardGranted", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE", attributes: { source: "daily", day: str(d.day), streak: str(d.streak) } });
+      break;
+    case "ComebackClaimed":
+      emit("RewardGranted", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE", attributes: { source: "comeback", day: str(d.day) } });
+      break;
+    case "GuildDeposited":
+      emit("TreasuryDeposited", { playerId: pid(d.user), amount: str(d.amount), currency: "RESOURCE", attributes: { source: "guild_deposit", total: str(d.total) } });
+      break;
+    case "QuestProgressProven":
+      emit("QuestCompleted", { playerId: pid(d.user), attributes: { kind: "progress_proven", questId: str(d.quest_id) } });
+      break;
+    case "ChallengePayoutClaimed":
+      emit("QuestCompleted", { playerId: pid(d.user), amount: str(d.payout), currency: "RESOURCE", attributes: { kind: "challenge_payout", week: str(d.week_number) } });
+      emit("RewardGranted", { playerId: pid(d.user), amount: str(d.payout), currency: "RESOURCE", attributes: { source: "challenge", week: str(d.week_number) } });
       break;
     case "AchievementUnlocked":
       emit("QuestCompleted", { attributes: { kind: "achievement", achievementId: str(d.achievementId) } }); break;
@@ -560,7 +543,7 @@ export function normalizeChainEvent(row: ChainEventRow, salt: string, opts: { tr
     // Explicitly ignored: no Watchtower semantics, kept out on purpose.
     case "AuctionCreated": case "AuctionCancelled": case "RentalListed": case "RentalDelisted":
     case "LotteryDrawn": case "HotMarketSkipped":
-    case "ChallengeCreated": case "QuestCreated":
+    case "ChallengeCreated": case "QuestCreated": case "NeighborVisited":
       break;
     default:
       // Unknown to this parser version: surface as ConfigUpdated? No — never

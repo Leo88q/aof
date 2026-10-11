@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * [F-06] End-to-end smoke test of the Switchboard settlement on devnet.
+ * [F-06] End-to-end smoke test of slot-hash settlement on devnet.
  *
  *   npm ci                                   # workspace root (@solana/web3.js)
  *   API=https://api.devnet.example RPC_URL=https://api.devnet.solana.com \
@@ -15,8 +15,8 @@
  *   5. find the reveal tx         decode VrfSettled from its logs
  *   6. recompute the outcome      sha256("aof-vrf-v1"|"pack"|commit|value) and
  *                                 compare with the minted ToolData rarity
- * Programs must be built with `--features devnet` and the backend must run
- * with SWITCHBOARD_CLUSTER=devnet.
+ * Programs may be built with the empty `--features devnet` marker. The
+ * backend must be on devnet and must not set AOF_RANDOMNESS.
  */
 import { createHash, createPrivateKey, randomBytes, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -128,7 +128,7 @@ async function main() {
   step(1, "pool health");
   const health = await call("GET", "/vrf/health");
   console.log(JSON.stringify(health));
-  if (health.cluster !== "devnet") throw new Error("backend is not configured for the devnet Switchboard");
+  if (health.cluster !== "devnet") throw new Error("backend is not configured for devnet");
   if (!health.core?.healthy) throw new Error(`core pool unhealthy: ${health.core?.reason}`);
 
   step(2, `open a ${PACK} pack as ${player.publicKey.toBase58()}`);
@@ -181,7 +181,7 @@ async function main() {
   step(6, "recompute the outcome");
   const { bps, rarity } = packRarity(new PublicKey(commit.packCommit).toBuffer(), settled.value, odds);
   console.log(`bps=${bps} expected=${rarity} minted=${status.tool.rarity}`);
-  if (rarity !== status.tool.rarity) throw new Error("minted rarity does not match the published oracle value");
+  if (rarity !== status.tool.rarity) throw new Error("minted rarity does not match the slot-hash roll");
   console.log("\nVRF devnet smoke test passed");
 }
 

@@ -3,46 +3,12 @@
   "note": "Экономические разрывы (economy_issue) — отдельная ось от статуса ресурса; pre-deployment product blockers, а не основание менять классификацию. Наличие generic admin-минта/claim не закрывает missing_player_source.",
   "renameBlocking": false,
   "blockers": {
-    "missingSource": [
-      "Data",
-      "Compute",
-      "BlueCore",
-      "PurpleCore",
-      "RedCore",
-      "ClearQuartz",
-      "RoseQuartz",
-      "BioChip",
-      "Mind"
-    ],
-    "missingSink": [
-      "Model",
-      "Dataset",
-      "PhotonBit",
-      "CryoFluid",
-      "VoltFluid",
-      "BioFluid",
-      "NanoFluid",
-      "QuantumFluid"
-    ]
+    "missingSource": [],
+    "missingSink": []
   },
   "recipeView": {
-    "craftInputsWithoutPlayerSource": [
-      "BioChip",
-      "BlueCore",
-      "ClearQuartz",
-      "Data",
-      "PurpleCore",
-      "RedCore",
-      "RoseQuartz"
-    ],
-    "craftOutputsNeverConsumed": [
-      "BioFluid",
-      "CryoFluid",
-      "NanoFluid",
-      "PhotonBit",
-      "QuantumFluid",
-      "VoltFluid"
-    ],
+    "craftInputsWithoutPlayerSource": [],
+    "craftOutputsNeverConsumed": [],
     "genericIssuance": {
       "admin": true,
       "playerClaim": true
@@ -54,7 +20,10 @@
       "display": "Data",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 8 (выход)"
+      ],
       "sinks": [
         "craft.rs#handler",
         "craft_recipe.rs#handler",
@@ -66,7 +35,8 @@
       ],
       "recipes": [
         "recipe 3: вход",
-        "recipe 6: вход"
+        "recipe 6: вход",
+        "recipe 8: выход"
       ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
@@ -88,8 +58,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "Circuit",
@@ -99,20 +69,28 @@
       "sources": [
         "collect_mining.rs#handler",
         "rental_delegation.rs#handler",
-        "season.rs#claim_reward_handler"
+        "season.rs#claim_premium_reward_handler"
       ],
       "sinks": [
         "craft.rs#handler",
         "craft_recipe.rs#handler",
         "exploration.rs#upgrade_tier_handler",
+        "recipe 12 (вход)",
+        "recipe 14 (вход)",
+        "recipe 17 (вход)",
         "recipe 5 (вход)",
+        "recipe 9 (вход)",
         "referral.rs#upgrade_handler",
         "rental_delegation.rs#repair_handler",
         "repair.rs#handler",
         "start_model_training.rs#handler"
       ],
       "recipes": [
-        "recipe 5: вход"
+        "recipe 12: вход",
+        "recipe 14: вход",
+        "recipe 17: вход",
+        "recipe 5: вход",
+        "recipe 9: вход"
       ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
@@ -150,6 +128,7 @@
         "craft.rs#handler",
         "craft_recipe.rs#handler",
         "exploration.rs#upgrade_tier_handler",
+        "recipe 10 (вход)",
         "recipe 4 (вход)",
         "referral.rs#upgrade_handler",
         "rental_delegation.rs#repair_handler",
@@ -157,6 +136,7 @@
         "start_signal_processing.rs#handler"
       ],
       "recipes": [
+        "recipe 10: вход",
         "recipe 4: вход"
       ],
       "genericPaths": [
@@ -195,9 +175,15 @@
         "craft.rs#handler",
         "craft_recipe.rs#handler",
         "plant_neuron.rs#handler",
+        "recipe 11 (вход)",
+        "recipe 13 (вход)",
+        "recipe 14 (вход)",
         "recipe 5 (вход)"
       ],
       "recipes": [
+        "recipe 11: вход",
+        "recipe 13: вход",
+        "recipe 14: вход",
         "recipe 5: вход"
       ],
       "genericPaths": [
@@ -301,7 +287,9 @@
       "sources": [
         "collect_model.rs#handler"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
@@ -323,8 +311,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "Power",
@@ -367,11 +355,16 @@
       "display": "Compute",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 17 (выход)"
+      ],
       "sinks": [
         "start_model_training.rs#handler"
       ],
-      "recipes": [],
+      "recipes": [
+        "recipe 17: выход"
+      ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
@@ -392,8 +385,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "Dataset",
@@ -404,8 +397,21 @@
         "collect_mining.rs#handler",
         "rental_delegation.rs#handler"
       ],
-      "sinks": [],
-      "recipes": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 12 (вход)",
+        "recipe 13 (вход)",
+        "recipe 16 (вход)",
+        "recipe 17 (вход)",
+        "recipe 8 (вход)"
+      ],
+      "recipes": [
+        "recipe 12: вход",
+        "recipe 13: вход",
+        "recipe 16: вход",
+        "recipe 17: вход",
+        "recipe 8: вход"
+      ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
@@ -426,21 +432,25 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "BlueCore",
       "display": "Blue Core",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 9 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 0 (вход)"
       ],
       "recipes": [
-        "recipe 0: вход"
+        "recipe 0: вход",
+        "recipe 9: выход"
       ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
@@ -462,20 +472,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "PurpleCore",
       "display": "Purple Core",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 11 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 7 (вход)"
       ],
       "recipes": [
+        "recipe 11: выход",
         "recipe 7: вход"
       ],
       "genericPaths": [
@@ -498,20 +512,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "RedCore",
       "display": "Red Core",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 10 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 1 (вход)"
       ],
       "recipes": [
+        "recipe 10: выход",
         "recipe 1: вход"
       ],
       "genericPaths": [
@@ -534,20 +552,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "ClearQuartz",
       "display": "Clear Quartz",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 12 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 2 (вход)"
       ],
       "recipes": [
+        "recipe 12: выход",
         "recipe 2: вход"
       ],
       "genericPaths": [
@@ -570,20 +592,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "RoseQuartz",
       "display": "Rose Quartz",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 13 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 6 (вход)"
       ],
       "recipes": [
+        "recipe 13: выход",
         "recipe 6: вход"
       ],
       "genericPaths": [
@@ -606,17 +632,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "AmberQuartz",
       "display": "Amber Quartz",
-      "status": "candidate-dead",
-      "playerHeld": false,
-      "sources": [],
-      "sinks": [],
-      "recipes": [],
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 15 (выход)"
+      ],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
+      "recipes": [
+        "recipe 15: выход"
+      ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
@@ -729,8 +762,12 @@
         "craft_recipe.rs#handler",
         "recipe 2 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "craft_recipe.rs#handler",
+        "recipe 15 (вход)"
+      ],
       "recipes": [
+        "recipe 15: вход",
         "recipe 2: выход"
       ],
       "genericPaths": [
@@ -753,20 +790,24 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "BioChip",
       "display": "Bio Chip",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 14 (выход)"
+      ],
       "sinks": [
         "craft_recipe.rs#handler",
         "recipe 7 (вход)"
       ],
       "recipes": [
+        "recipe 14: выход",
         "recipe 7: вход"
       ],
       "genericPaths": [
@@ -789,8 +830,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "CryoFluid",
@@ -801,7 +842,9 @@
         "craft_recipe.rs#handler",
         "recipe 3 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [
         "recipe 3: выход"
       ],
@@ -825,8 +868,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "VoltFluid",
@@ -837,7 +880,9 @@
         "craft_recipe.rs#handler",
         "recipe 4 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [
         "recipe 4: выход"
       ],
@@ -861,8 +906,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "BioFluid",
@@ -873,7 +918,9 @@
         "craft_recipe.rs#handler",
         "recipe 5 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [
         "recipe 5: выход"
       ],
@@ -897,8 +944,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "NanoFluid",
@@ -909,7 +956,9 @@
         "craft_recipe.rs#handler",
         "recipe 6 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [
         "recipe 6: выход"
       ],
@@ -933,8 +982,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "QuantumFluid",
@@ -945,7 +994,9 @@
         "craft_recipe.rs#handler",
         "recipe 7 (выход)"
       ],
-      "sinks": [],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [
         "recipe 7: выход"
       ],
@@ -969,16 +1020,20 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_sink",
-      "blocker": "pre-deployment product blocker: ресурс выпускается, но нигде не потребляется"
+      "gap": null,
+      "blocker": null
     },
     {
       "kind": "SoulCore",
       "display": "Soul Core",
-      "status": "candidate-dead",
-      "playerHeld": false,
-      "sources": [],
-      "sinks": [],
+      "status": "active-player",
+      "playerHeld": true,
+      "sources": [
+        "seal_laboratory.rs#handler"
+      ],
+      "sinks": [
+        "seal_laboratory.rs#handler"
+      ],
       "recipes": [],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
@@ -1008,12 +1063,17 @@
       "display": "Mind",
       "status": "active-player",
       "playerHeld": true,
-      "sources": [],
+      "sources": [
+        "craft_recipe.rs#handler",
+        "recipe 16 (выход)"
+      ],
       "sinks": [
         "craft.rs#handler",
         "reroll.rs#handler"
       ],
-      "recipes": [],
+      "recipes": [
+        "recipe 16: выход"
+      ],
       "genericPaths": [
         "admin_config.rs#set_issuance_lifetime_baseline",
         "admin_config.rs#set_supply_cap",
@@ -1034,8 +1094,8 @@
         "admin: admin_config.rs, burn_resource.rs, issuance_cap.rs, lib.rs, mint_resource.rs",
         "claim: lib.rs, mint_resource_once.rs"
       ],
-      "gap": "missing_source",
-      "blocker": "pre-deployment product blocker: ресурс тратится игроком, но получить его игрок не может"
+      "gap": null,
+      "blocker": null
     }
   ]
 }

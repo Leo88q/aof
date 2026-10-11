@@ -44,17 +44,17 @@ const editJson = (tmp, rel, fn) => {
 };
 const withRoot = (fn) => { const tmp = makeRoot(); try { return fn(tmp); } finally { fs.rmSync(tmp, { recursive: true, force: true }); } };
 
-test('репозиторий проходит гейт: 25 active-player, 0 active-internal, 2 candidate-dead, 0 dead', () => {
+test('репозиторий проходит гейт: 27 active-player, 0 active-internal, 0 candidate-dead, 0 dead', () => {
   const result = run(['--check']);
   assert.equal(result.code, 0, result.out);
   assert.match(result.out, /27 ресурсов/);
   const evidence = JSON.parse(read(EVIDENCE));
   const byStatus = (status) => evidence.resources.filter((r) => r.status === status).map((r) => r.kind).sort();
-  assert.equal(byStatus('active-player').length, 25);
+  assert.equal(byStatus('active-player').length, 27);
   assert.equal(byStatus('active-internal').length, 0);
-  assert.equal(byStatus('candidate-dead').length, 2);
+  assert.equal(byStatus('candidate-dead').length, 0);
   assert.equal(byStatus('dead').length, 0);
-  assert.deepEqual(byStatus('candidate-dead'), ['AmberQuartz', 'SoulCore']);
+  assert.deepEqual(byStatus('candidate-dead'), []);
   // Статусы взаимоисключающие и не дублируются: «Data и активен, и internal-only» — ошибка.
   const seen = new Set();
   for (const r of evidence.resources) {
@@ -80,12 +80,11 @@ test('источники и стоки подтверждены обработч
   assert.ok(sinkOf('Silicon').includes('repair.rs'), 'Silicon тратится на ремонт');
   assert.ok(sinkOf('Compute').includes('start_model_training.rs'), 'Compute — топливо печи');
   assert.ok(sinkOf('Data').includes('exploration.rs'), 'Data — стоимость трипа');
-  for (const kind of ['AmberQuartz', 'SoulCore']) {
-    const r = byKind.get(kind);
-    assert.equal(r.flow.playerSource.length + r.flow.playerSink.length, 0, `${kind}: в коде нет ни выдачи, ни траты`);
-    assert.ok(r.frontend.length > 0, `${kind}: при этом присутствует во фронтенд-каталоге`);
-    assert.ok(r.flow.flags.has_admin_source && r.flow.flags.generic_claim_output, `${kind}: generic-пути открыты для любого kind`);
-  }
+  assert.ok(sourceOf('Data').includes('craft_recipe.rs'), 'Data собирается из набора данных');
+  assert.ok(sourceOf('AmberQuartz').includes('craft_recipe.rs'), 'AmberQuartz — сосуд из фотонного бита');
+  assert.ok(sinkOf('AmberQuartz').includes('seal_laboratory.rs'), 'AmberQuartz сгорает в печати');
+  assert.ok(sourceOf('SoulCore').includes('seal_laboratory.rs'), 'SoulCore выпускает печать');
+  assert.ok(sinkOf('Model').includes('seal_laboratory.rs'), 'модель сгорает в печати');
 });
 
 test('dynamic dispatch посчитан: generic-пути, таблица инструментов и рецепты в evidence', () => {
@@ -95,11 +94,9 @@ test('dynamic dispatch посчитан: generic-пути, таблица инс
   assert.ok(g.playerClaim.some((e) => e.includes('mint_resource_once.rs')), 'claim игрока обязан быть в evidence');
   assert.deepEqual(g.miningKinds, ['Circuit', 'Dataset', 'Neuron', 'Silicon'], 'таблица resource_kind_for_tool');
   assert.equal(g.orderbookKinds, 27, 'ордербук принимает все 27 kinds — это не источник');
-  assert.equal(g.recipes.length, 8, 'рецептов в craft_recipe.rs — 8');
-  assert.deepEqual(evidence.productGaps.craftInputsWithoutPlayerSource.sort(),
-    ['BioChip', 'BlueCore', 'ClearQuartz', 'Data', 'PurpleCore', 'RedCore', 'RoseQuartz']);
-  assert.deepEqual(evidence.productGaps.craftOutputsNeverConsumed.sort(),
-    ['BioFluid', 'CryoFluid', 'NanoFluid', 'PhotonBit', 'QuantumFluid', 'VoltFluid']);
+  assert.equal(g.recipes.length, 18, 'рецептов в craft_recipe.rs — 18');
+  assert.deepEqual(evidence.productGaps.craftInputsWithoutPlayerSource, []);
+  assert.deepEqual(evidence.productGaps.craftOutputsNeverConsumed, []);
 });
 
 test('флаги каждого ресурса согласованы со списками, а статус — с флагами', () => {
@@ -132,7 +129,8 @@ test('флаги каждого ресурса согласованы со сп�
     const issue = r.economyIssue ?? null;
     const sink = r.flow.flags.has_player_sink || r.flow.flags.recipe_input;
     const source = r.flow.flags.has_player_source || r.flow.flags.recipe_output;
-    const expectedIssue = sink && !source ? 'missing_source' : (!sink && source ? 'missing_sink' : null);
+    const trophy = r.kind === 'SoulCore' && source && !sink;
+    const expectedIssue = trophy ? null : (sink && !source ? 'missing_source' : (!sink && source ? 'missing_sink' : null));
     assert.equal(issue, expectedIssue, `${r.kind}: economy_issue разошёлся со связностью источника/стока`);
   }
 });
@@ -144,22 +142,17 @@ test('отсутствие источника/стока не понижает p
   assert.equal(data.status, 'active-player', 'Data лежит в ATA игрока и сжигается стоимостью трипа — это player-ресурс');
   assert.equal(data.flow.flags.player_held, true);
   assert.equal(data.flow.flags.has_player_sink, true);
-  assert.equal(data.flow.flags.has_player_source, false);
-  assert.equal(data.economyIssue, 'missing_source', 'разрыв экономики — отдельная ось, а не смена статуса');
+  assert.equal(data.flow.flags.has_player_source, true, 'Data собирается из набора данных');
+  assert.equal(data.economyIssue, null, 'разрыв закрыт рецептом, статус не менялся');
   const fluid = byKind.get('BioFluid');
   assert.equal(fluid.status, 'active-player', 'BioFluid выходит из рецепта в ATA игрока');
   assert.equal(fluid.flow.flags.has_player_source, true);
-  assert.equal(fluid.flow.flags.has_player_sink, false);
-  assert.equal(fluid.economyIssue, 'missing_sink');
-  for (const kind of ['BlueCore', 'PurpleCore', 'RedCore', 'ClearQuartz', 'RoseQuartz', 'BioChip', 'Compute', 'Mind']) {
-    assert.equal(byKind.get(kind).status, 'active-player', `${kind}: рецепт/топливо жжёт его с token account игрока`);
+  assert.equal(fluid.flow.flags.has_player_sink, true, 'флюид сгорает в печати');
+  assert.equal(fluid.economyIssue, null);
+  for (const kind of ['BlueCore', 'PurpleCore', 'RedCore', 'ClearQuartz', 'RoseQuartz', 'BioChip', 'Compute', 'Mind', 'AmberQuartz', 'SoulCore']) {
+    assert.equal(byKind.get(kind).status, 'active-player', `${kind}: рецепт, печать или топливо держат его на счёте игрока`);
   }
-  for (const kind of ['AmberQuartz', 'SoulCore']) {
-    const r = byKind.get(kind);
-    assert.equal(r.status, 'candidate-dead', `${kind}: нет подтверждённого product flow, удаление не разрешено`);
-    assert.equal(r.flow.flags.player_held, false);
-    assert.equal(r.economyIssue, null, `${kind}: не экономический разрыв, а не подтверждённый поток`);
-  }
+  assert.equal(byKind.get('SoulCore').economyIssue, null, 'ядро души — сохранённый трофей, не дыра');
 });
 
 test('возвратные пути не выдают за источник игрока', () => {
@@ -184,7 +177,7 @@ test('правка статуса на active без источника в це�
     });
     const result = run(['--check', '--root', tmp]);
     assert.equal(result.code, 1, result.out);
-    assert.match(result.out, /SoulCore: статус active, а evidence даёт candidate-dead/);
+    assert.match(result.out, /SoulCore: статус active, а evidence даёт active-player/);
   });
 });
 

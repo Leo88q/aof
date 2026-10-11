@@ -4,11 +4,18 @@ import { AUTHORITY, AUTHORITY_PUBKEY } from "../config";
 import { sendConfirmedTransaction } from "./transactionLifecycle";
 import { simulateTransaction } from "../security/txSimulator";
 import { PayerCostQuote, PayerRentAccountSpec, quotePayerCosts } from "./payerQuote";
+import { preparePlayerDurableNonce } from "./playerNonce";
+
+function missingAccount(logs: string[] | undefined): string {
+  const line = (logs || []).find((entry) => entry.includes("caused by account:"));
+  const account = line?.split("caused by account:")[1]?.split(".")[0]?.trim();
+  return account ? ` Account: ${account}.` : "";
+}
 
 async function requireSimulation(tx: Transaction): Promise<void> {
   const result = await simulateTransaction(tx);
   if (!result.success) {
-    throw new Error(`Transaction simulation failed: ${result.error || "unknown error"}`);
+    throw new Error(`Transaction simulation failed: ${result.error || "unknown error"}${missingAccount(result.logs)}`);
   }
 }
 
@@ -36,10 +43,11 @@ async function buildCoSignedTransaction(
   signers: Signer[] = [],
 ): Promise<{ tx: Transaction; lifetime: { blockhash: string; lastValidBlockHeight: number } }> {
   await assertExpectedCluster();
-  const tx = new Transaction().add(...ix);
+  const durable = await preparePlayerDurableNonce(feePayer, ix);
+  const tx = new Transaction().add(...durable.instructions);
   tx.feePayer = feePayer;
-  const lifetime = await connection.getLatestBlockhash("confirmed");
-  tx.recentBlockhash = lifetime.blockhash;
+  tx.recentBlockhash = durable.blockhash;
+  const lifetime = { blockhash: durable.blockhash, lastValidBlockHeight: durable.lastValidBlockHeight };
   // Sign with the operator only when an instruction actually requires it.
   const msg = tx.compileMessage();
   const required = msg.accountKeys.slice(0, msg.header.numRequiredSignatures);
@@ -66,8 +74,8 @@ export async function coSignQuoted(
   signers: Signer[] = [],
 ): Promise<{ tx: string; quote: PayerCostQuote }> {
   const { tx, lifetime } = await buildCoSignedTransaction(ix, feePayer, signers);
-  const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
   await requireSimulation(tx);
+  const quote = await quotePayerCosts(tx, feePayer, lifetime, rentAccounts);
   return {
     tx: tx.serialize({ requireAllSignatures: false }).toString("base64"),
     quote,

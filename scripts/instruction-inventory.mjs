@@ -566,6 +566,17 @@ export function parseCuReport(markdown) {
   return rows;
 }
 
+/**
+ * Порог CU по классам. VRF-раскрытия с PR #35 идут через CPI в Metaplex Token
+ * Metadata, поэтому их измеренный максимум 143k–152k (см. измерения в
+ * `tests/aof_cu_report.ts`) выше общего порога; для них действует 175 000.
+ * Тест `tests/readiness/instruction-inventory.test.cjs` держит оба значения.
+ */
+export const CU_LIMIT = 150000;
+export const CU_LIMIT_VRF = 175000;
+export const VRF_INSTRUCTION = /^(VrfPoolAdd|\w+Commit|\w+Reveal)$/;
+export const cuLimitFor = (name) => (VRF_INSTRUCTION.test(name) ? CU_LIMIT_VRF : CU_LIMIT);
+
 export function compareWithCuReport(model, markdown) {
   const rows = parseCuReport(markdown);
   const core = model.instructions.filter((i) => i.program === 'aof_core');
@@ -574,7 +585,7 @@ export function compareWithCuReport(model, markdown) {
   const notInIdl = [...rows.keys()].filter((name) => !pascalByName.has(name));
   const referencedNotExecuted = core.filter((i) => i.summary.validatorTested && !rows.has(pascalOf(i.name)));
   const neither = core.filter((i) => !i.summary.validatorTested && !rows.has(pascalOf(i.name)));
-  const overBudget = [...rows.entries()].filter(([, v]) => v.maxCu > 150000).map(([name, v]) => `${name}: ${v.maxCu}`);
+  const overBudget = [...rows.entries()].filter(([name, v]) => v.maxCu > cuLimitFor(name)).map(([name, v]) => `${name}: ${v.maxCu}`);
   return { reportRows: rows.size, coreInstructions: core.length, executed: executed.length, notInIdl, referencedNotExecuted: referencedNotExecuted.map((i) => i.name),
     neither: neither.map((i) => i.name), overBudget };
 }
@@ -633,7 +644,10 @@ function main() {
     console.log(`Статически упомянуты в validator-тестах, но в CU-отчёте нет (${result.referencedNotExecuted.length}): ${result.referencedNotExecuted.join(', ') || '—'}`);
     console.log(`Не затронуты ни тестами, ни CU-отчётом (${result.neither.length}): ${result.neither.join(', ') || '—'}`);
     if (result.notInIdl.length) console.log(`В отчёте, но не в IDL (${result.notInIdl.length}): ${result.notInIdl.join(', ')}`);
-    if (result.overBudget.length) { console.log(`Выше порога 150 000 CU: ${result.overBudget.join(', ')}`); process.exit(1); }
+    if (result.overBudget.length) {
+      console.log(`Выше порога ${CU_LIMIT} CU (VRF-раскрытия VrfPoolAdd/*Commit/*Reveal — ${CU_LIMIT_VRF} CU): ${result.overBudget.join(', ')}`);
+      process.exit(1);
+    }
     return;
   }
   process.stdout.write(jsonText);

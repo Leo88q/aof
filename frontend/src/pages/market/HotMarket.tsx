@@ -12,6 +12,7 @@ import { actionErrorFeedback } from "../../lib/txResponseFeedback";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 import { Card } from "../../components/ui/Card";
 import { Panel, Readout, Readouts, Row, Rows, Note } from "../../ui/forge/kit";
 import { RARITY_COLOR, RARITY_LABEL, rarityKey, shortAddr, timeLeftStr } from "../../lib/marketUtils";
@@ -158,6 +159,7 @@ export function HotMarket() {
       </h1>
       <Card className="mt-3">
         <p className="text-straw text-sm leading-relaxed">{copy.hotExplanation}</p>
+        <MarketFeeNote />
       </Card>
 
       <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label={t.inventory}>

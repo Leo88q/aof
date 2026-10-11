@@ -15,10 +15,11 @@ import { Card } from "../../components/ui/Card";
 import { Panel, Readout, Readouts, Sticker } from "../../ui/forge/kit";
 import { SonarPPI } from "../../ui/forge/devices";
 import { ArtPlate } from "../../components/visual/ArtPlate";
-import { toolPlate, TOOL_RARITIES, UI_ICONS, type ToolRarity } from "../../lib/visualAssets";
+import { toolPlate, TOOL_NFTS, TOOL_RARITIES, UI_ICONS, type ToolRarity } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { RARITY_COLOR, rarityKey, shortAddr } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 
 function knownRarity(value: unknown): ToolRarity | null {
   if (value == null) return null;
@@ -33,6 +34,7 @@ export function ListingPage() {
   const [treasury, setTreasury] = useState<string | null>(null);
   const [treasuryStatus, setTreasuryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [listings, setListings] = useState<MarketListing[] | null>(null);
+  const [category, setCategory] = useState<(typeof TOOL_NFTS)[number]["id"] | "all">("all");
   const [loading, setLoading] = useState(true);
   const listingsRequest = useRef(0);
   const [owned, setOwned] = useState<{ address: string; items: FreeTool[] } | null>(null);
@@ -202,6 +204,9 @@ export function ListingPage() {
     finally { inFlight.current = false; setBusy(false); }
   }
 
+  const shownListings = (listings ?? []).filter(row =>
+    category === "all" || String(row.tool?.toolType || "").toLowerCase() === category);
+
   return (
     <div lang={language} className="listing-page p-4 pt-6 pb-24 space-y-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
@@ -214,6 +219,7 @@ export function ListingPage() {
         </button>
       </div>
       <p className="text-straw text-xs leading-relaxed">{copy.intro}</p>
+      <MarketFeeNote />
       {notice?.language === language && (
         <motion.div role="status" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment break-words">
@@ -265,8 +271,30 @@ export function ListingPage() {
         </Card>
       )}
 
+      {listings !== null && (
+        <div className="listing-cats" role="tablist" aria-label={copy.categoryLabel}>
+          <button type="button" role="tab" aria-selected={category === "all"}
+            className={category === "all" ? "listing-cat listing-cat--on" : "listing-cat"}
+            onClick={() => setCategory("all")}>{copy.allTools}</button>
+          {TOOL_NFTS.map(tool => (
+            <button key={tool.id} type="button" role="tab" aria-selected={category === tool.id}
+              className={category === tool.id ? "listing-cat listing-cat--on" : "listing-cat"}
+              onClick={() => setCategory(tool.id)}>
+              <img src={toolPlate(tool.id, "common")} alt="" />
+              <span>{toolName(language, tool.id)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {listings !== null && listings.length > 0 && shownListings.length === 0 && !loading && (
+        <Card className="text-center py-6">
+          <p className="text-parchment text-sm">{copy.categoryEmpty}</p>
+        </Card>
+      )}
+
       {listings !== null && <div className="grid grid-cols-1 gap-3">
-        {listings.map((row, i) => {
+        {shownListings.map((row, i) => {
           const rarity = knownRarity(row.tool?.rarity);
           const name = toolName(language, row.tool?.toolType);
           const mine = !!address && row.seller === address;

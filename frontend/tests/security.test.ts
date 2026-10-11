@@ -197,7 +197,7 @@ test("legacy unbounded purchase, trailing bytes, extra accounts and cosigners fa
 // ---------------------------------------------------------------------------
 // [AUDIT F-32] generic aof-core instruction policy
 // ---------------------------------------------------------------------------
-import { validateCoreInstructions, CORE_PROGRAM_ID } from "../src/lib/transactionIntent";
+import { validateCoreInstructions, durabilityEnchantPda, CORE_PROGRAM_ID } from "../src/lib/transactionIntent";
 import { CORE_INSTRUCTIONS } from "../src/lib/coreInstructions";
 
 function specOf(name: string) {
@@ -247,6 +247,17 @@ test("core instruction policy names every instruction and rejects authority-only
   const unknown = { programId: CORE_PROGRAM_ID, data: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]), keys: [] };
   assert.doesNotThrow(() => validateCoreInstructions([unknown], user.publicKey),
     "unrecognised instructions are left to the program allowlist check in txGuard");
+});
+
+test("collect mining accepts only the durability enchant PDA as an extra account", () => {
+  const spec = specOf("collect_mining");
+  const keys = Array.from({ length: spec.accounts.length }, () => Keypair.generate().publicKey);
+  keys[spec.actorIndexes[0]] = user.publicKey;
+  const mint = keys[spec.accounts.indexOf("mint")];
+  assert.doesNotThrow(() => validateCoreInstructions([ixFor("collect_mining", keys)], user.publicKey));
+  assert.doesNotThrow(() => validateCoreInstructions([ixFor("collect_mining", [...keys, durabilityEnchantPda(mint)])], user.publicKey));
+  assert.throws(() => validateCoreInstructions([ixFor("collect_mining", [...keys, Keypair.generate().publicKey])], user.publicKey), /enchant/);
+  assert.throws(() => validateCoreInstructions([ixFor("collect_mining", [...keys, durabilityEnchantPda(mint), durabilityEnchantPda(mint)])], user.publicKey), /account count/);
 });
 
 test("core instruction table covers the committed IDL", () => {
@@ -358,7 +369,7 @@ test("player tool mint requires local intent and binds payer = recipient = walle
 // [F-06] Switchboard-settled packs
 // ---------------------------------------------------------------------------
 import { PACK_OPEN_COMMIT_DISCRIMINATOR, expectedSigners } from "../src/lib/transactionIntent";
-import { SWITCHBOARD_PROGRAMS } from "../src/lib/txGuard";
+import { SWITCHBOARD_PROGRAMS, TOKEN_METADATA_PROGRAM_ID } from "../src/lib/txGuard";
 
 function packCommitFixture(maxPrice = 100_000_000n, packType = 0) {
   const operator = Keypair.generate().publicKey;
@@ -391,6 +402,31 @@ test("pack intent binds the wallet, the pack type and the price ceiling", () => 
   assert.equal(expectedSigners(undefined), 1);
 });
 
+test("pack and purchase intents allow the durable nonce prelude but not another payment", () => {
+  const operator = new PublicKey("C8MS1G3g7aR39pAGYnFjcz4uj693dYw3icWTMCV7cYRN");
+  const nonce = Keypair.generate().publicKey;
+  const advance = {
+    programId: SystemProgram.programId.toBase58(),
+    keys: [nonce, new PublicKey("SysvarRecentB1ockHashes11111111111111111111"), user.publicKey],
+    data: Uint8Array.from([4, 0, 0, 0]),
+  };
+  const refundData = Buffer.alloc(12);
+  refundData.writeUInt32LE(2, 0);
+  refundData.writeBigUInt64LE(1_447_680n, 4);
+  const refund = { programId: SystemProgram.programId.toBase58(), keys: [user.publicKey, operator], data: refundData };
+  const budget = { programId: "ComputeBudget111111111111111111111111111111", keys: [], data: Uint8Array.from([2, 0x80, 0x1a, 0x06, 0x00]) };
+  const pack = packCommitFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([advance, budget, refund, pack.ix], pack.intent, user.publicKey));
+  const purchase = purchaseFixture();
+  assert.doesNotThrow(() => validateTransactionIntent([advance, budget, refund, purchase.ix], purchase.intent, user.publicKey));
+  const toOther = { ...refund, keys: [user.publicKey, other] };
+  assert.throws(() => validateTransactionIntent([advance, toOther, pack.ix], pack.intent, user.publicKey), /outside/);
+  assert.throws(() => validateTransactionIntent([refund, pack.ix], pack.intent, user.publicKey), /without nonce advance/);
+  assert.throws(() => validateTransactionIntent([advance, refund, refund, pack.ix], pack.intent, user.publicKey), /operator transfer/);
+  const lateAdvance = [pack.ix, advance];
+  assert.throws(() => validateTransactionIntent(lateAdvance, pack.intent, user.publicKey), /outside/);
+});
+
 test("Switchboard is accepted only as the game program's CPI, never as a top-level instruction", async () => {
   const direct = transaction(new TransactionInstruction({ programId: new PublicKey(SWITCHBOARD_PROGRAMS[0]), keys: [], data: Buffer.alloc(8) }));
   assert.equal((await guard(direct)).safe, false);
@@ -399,6 +435,19 @@ test("Switchboard is accepted only as the game program's CPI, never as a top-lev
     ...rpc,
     simulateTransaction: async () => ({ value: { err: null, logs: [
       `Program ${core.toBase58()} invoke [1]`, `Program ${SWITCHBOARD_PROGRAMS[0]} invoke [2]`,
+    ] } }),
+  };
+  assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);
+});
+
+test("Token Metadata is accepted only as the game program's CPI, never as a top-level instruction", async () => {
+  const direct = transaction(new TransactionInstruction({ programId: new PublicKey(TOKEN_METADATA_PROGRAM_ID), keys: [], data: Buffer.alloc(8) }));
+  assert.equal((await guard(direct)).safe, false);
+  const viaGame = transaction(new TransactionInstruction({ programId: core, keys: [], data: Buffer.alloc(8) }));
+  const logsWithCpi: any = {
+    ...rpc,
+    simulateTransaction: async () => ({ value: { err: null, logs: [
+      `Program ${core.toBase58()} invoke [1]`, `Program ${TOKEN_METADATA_PROGRAM_ID} invoke [2]`,
     ] } }),
   };
   assert.equal((await guard(viaGame, {}, logsWithCpi)).safe, true);

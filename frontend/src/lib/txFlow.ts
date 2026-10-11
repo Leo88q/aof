@@ -3,6 +3,7 @@ import { txResponseFeedback, txExceptionFeedback } from "./txResponseFeedback";
 import { getApiErrorLanguage } from "./apiErrorLanguage";
 import type { TransactionIntent } from "./transactionIntent";
 import { confirmSignature } from "./confirmation";
+import { showTxTrap } from "./txTrap";
 import { connection } from "./wallet";
 import { PublicKey, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { signAndSendTx } from "./wallet";
@@ -56,11 +57,13 @@ export async function handleTxResponse(response: any, intent?: TransactionIntent
           error: copy.connectWallet,
         };
       }
+      showTxTrap("tx-response", e);
       return { success: false, signature: typeof e?.signature === 'string' ? e.signature : undefined, error: txExceptionFeedback(e, language, copy.unconfirmedResponse) };
     }
   }
 
   if (response.error) {
+    showTxTrap("api-error", new Error(String(response.error)));
     return { success: false, error: txResponseFeedback(response.error, language, copy.unconfirmedResponse) };
   }
 

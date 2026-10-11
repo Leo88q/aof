@@ -25,8 +25,15 @@ for (const warning of authorityDecision.warnings) {
   // eslint-disable-next-line no-console
   console.warn(`[authority-gate] ${warning}`);
 }
+// The settler imports this module, so a production check here runs in that
+// process too. Compose sets this role only on the settler entrypoint and
+// forces the API service to "api". The settler overlay replaces ADMIN_TOKEN
+// with a non-secret so the real token is not in that process. Any other
+// process still needs the real token.
+const settlerProcess = process.env.AOF_PROCESS_ROLE === "vrf-settler"
+  && (process.argv[1] || "").includes("vrf-settler");
 if (isProduction) {
-  if (!process.env.ADMIN_TOKEN || process.env.ADMIN_TOKEN.length < 32) {
+  if (!settlerProcess && (!process.env.ADMIN_TOKEN || process.env.ADMIN_TOKEN.length < 32)) {
     throw new Error("Production requires a random ADMIN_TOKEN of at least 32 characters");
   }
   if (!process.env.EXPECTED_GENESIS_HASH) throw new Error("Production requires EXPECTED_GENESIS_HASH");

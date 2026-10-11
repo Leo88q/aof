@@ -179,6 +179,8 @@ export interface WeatherSnapshot {
    * показывает, чтобы «правило дня» не выглядело как «данные из сети».
    */
   source: "onchain" | "weather-state" | "canonical-schedule";
+  /** False only when the weather route says the WeatherState account is absent. */
+  weatherAccountPresent?: boolean;
 }
 
 /**
@@ -215,6 +217,7 @@ export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot> {
       // Роут сам говорит, подтверждён ли день аккаунтом сети или посчитан
       // правилом дня; неизвестный ответ считаем правилом дня, а не «данными сети».
       source: current.source === "onchain" ? "onchain" : "canonical-schedule",
+      weatherAccountPresent: current?.onchain?.present === true ? true : current?.onchain?.present === false ? false : undefined,
       ...season,
     };
   }
@@ -233,6 +236,7 @@ export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot> {
       ratePerHour: cachedMeta.rate,
       dayId: cachedDayId,
       source: "weather-state",
+      weatherAccountPresent: true,
       ...seasonFromDayId(cachedDayId),
     };
   }
@@ -249,6 +253,7 @@ export async function fetchWeatherSnapshot(): Promise<WeatherSnapshot> {
     ratePerHour: meta.rate,
     dayId,
     source: "canonical-schedule",
+    weatherAccountPresent: false,
     ...seasonFromDayId(dayId),
   };
 }

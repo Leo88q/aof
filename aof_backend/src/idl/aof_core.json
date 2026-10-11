@@ -2031,71 +2031,11 @@
         },
         {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
         }
       ],
       "args": []
@@ -2316,14 +2256,6 @@
           "writable": true
         },
         {
-          "name": "skr_mint",
-          "writable": true
-        },
-        {
-          "name": "user_skr",
-          "writable": true
-        },
-        {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
@@ -2367,106 +2299,10 @@
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "new_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "token_metadata_program"
         }
       ],
       "args": [
@@ -2954,61 +2790,8 @@
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -3161,61 +2944,8 @@
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -3231,65 +2961,11 @@
         },
         {
           "name": "issuance_cap_circuit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  1
-                ]
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "issuance_cap_silicon",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  2
-                ]
-              }
-            ]
-          }
+          "writable": true
         }
       ],
       "args": [
@@ -3416,71 +3092,11 @@
         },
         {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -3591,61 +3207,8 @@
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -3707,8 +3270,16 @@
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrf_slot",
           "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "auth",
@@ -5593,71 +5164,11 @@
         },
         {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "system_program",
@@ -5803,61 +5314,8 @@
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -5907,106 +5365,10 @@
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "token_metadata_program"
         }
       ],
       "args": [
@@ -6060,8 +5422,16 @@
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrf_slot",
           "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
       "args": []
@@ -8496,71 +7866,11 @@
         },
         {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -8700,61 +8010,8 @@
           "writable": true
         },
         {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "oracle"
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "stats",
-          "writable": true
-        },
-        {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "reward_escrow",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -8804,106 +8061,10 @@
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "new_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "token_metadata_program"
         }
       ],
       "args": [
@@ -9802,71 +8963,11 @@
         },
         {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "queue"
-        },
-        {
-          "name": "oracle",
           "writable": true
         },
         {
           "name": "recent_slothashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "switchboard_program"
         },
         {
           "name": "token_program",
@@ -12132,86 +11233,8 @@
           "signer": true
         },
         {
-          "name": "vrf_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "randomness",
-          "writable": true
-        },
-        {
           "name": "vrf_slot",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  114,
-                  102,
-                  95,
-                  115,
-                  108,
-                  111,
-                  116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "randomness"
-              }
-            ]
-          }
-        },
-        {
-          "name": "reward_escrow",
           "writable": true
-        },
-        {
-          "name": "queue",
-          "writable": true
-        },
-        {
-          "name": "program_state"
-        },
-        {
-          "name": "lut_signer"
-        },
-        {
-          "name": "lut",
-          "writable": true
-        },
-        {
-          "name": "wrapped_sol_mint",
-          "address": "So11111111111111111111111111111111111111112"
-        },
-        {
-          "name": "switchboard_program"
-        },
-        {
-          "name": "address_lookup_table_program"
         },
         {
           "name": "token_program",
@@ -12374,8 +11397,16 @@
           "writable": true
         },
         {
+          "name": "treasury",
+          "writable": true
+        },
+        {
           "name": "vrf_slot",
           "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "new_mint",
@@ -12494,106 +11525,10 @@
         },
         {
           "name": "metadata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  11,
-                  112,
-                  101,
-                  177,
-                  227,
-                  209,
-                  124,
-                  69,
-                  56,
-                  157,
-                  82,
-                  127,
-                  107,
-                  4,
-                  195,
-                  205,
-                  88,
-                  184,
-                  108,
-                  115,
-                  26,
-                  160,
-                  253,
-                  181,
-                  73,
-                  182,
-                  209,
-                  188,
-                  3,
-                  248,
-                  41,
-                  70
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "new_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                11,
-                112,
-                101,
-                177,
-                227,
-                209,
-                124,
-                69,
-                56,
-                157,
-                82,
-                127,
-                107,
-                4,
-                195,
-                205,
-                88,
-                184,
-                108,
-                115,
-                26,
-                160,
-                253,
-                181,
-                73,
-                182,
-                209,
-                188,
-                3,
-                248,
-                41,
-                70
-              ]
-            }
-          }
+          "writable": true
         },
         {
-          "name": "token_metadata_program",
-          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+          "name": "token_metadata_program"
         }
       ],
       "args": []
@@ -12666,6 +11601,10 @@
         {
           "name": "vrf_slot",
           "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "auth",
@@ -12776,6 +11715,10 @@
         {
           "name": "vrf_slot",
           "writable": true
+        },
+        {
+          "name": "recent_slothashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
       "args": []
@@ -14127,11 +13070,11 @@
           "writable": true
         },
         {
-          "name": "circuit_mint",
+          "name": "silicon_mint",
           "writable": true
         },
         {
-          "name": "user_circuit",
+          "name": "user_silicon",
           "writable": true
         },
         {
@@ -14155,35 +13098,8 @@
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
-          "name": "issuance_cap_circuit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  105,
-                  115,
-                  115,
-                  117,
-                  97,
-                  110,
-                  99,
-                  101,
-                  95,
-                  99,
-                  97,
-                  112
-                ]
-              },
-              {
-                "kind": "const",
-                "value": [
-                  1
-                ]
-              }
-            ]
-          }
+          "name": "issuance_cap_silicon",
+          "writable": true
         }
       ],
       "args": [
@@ -14192,6 +13108,197 @@
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "seal_laboratory",
+      "discriminator": [
+        45,
+        254,
+        248,
+        15,
+        161,
+        154,
+        213,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "material_mints",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  101,
+                  114,
+                  105,
+                  97,
+                  108,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "auth",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  104
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "finale",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  97,
+                  98,
+                  111,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114,
+                  121,
+                  95,
+                  102,
+                  105,
+                  110,
+                  97,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "model_mint",
+          "writable": true
+        },
+        {
+          "name": "user_model",
+          "writable": true
+        },
+        {
+          "name": "cryo_fluid_mint",
+          "writable": true
+        },
+        {
+          "name": "user_cryo_fluid",
+          "writable": true
+        },
+        {
+          "name": "volt_fluid_mint",
+          "writable": true
+        },
+        {
+          "name": "user_volt_fluid",
+          "writable": true
+        },
+        {
+          "name": "bio_fluid_mint",
+          "writable": true
+        },
+        {
+          "name": "user_bio_fluid",
+          "writable": true
+        },
+        {
+          "name": "nano_fluid_mint",
+          "writable": true
+        },
+        {
+          "name": "user_nano_fluid",
+          "writable": true
+        },
+        {
+          "name": "quantum_fluid_mint",
+          "writable": true
+        },
+        {
+          "name": "user_quantum_fluid",
+          "writable": true
+        },
+        {
+          "name": "amber_quartz_mint",
+          "writable": true
+        },
+        {
+          "name": "user_amber_quartz",
+          "writable": true
+        },
+        {
+          "name": "soul_core_mint",
+          "writable": true
+        },
+        {
+          "name": "user_soul_core",
+          "writable": true
+        },
+        {
+          "name": "issuance_cap_soul",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -14778,6 +13885,19 @@
         119,
         227,
         93
+      ]
+    },
+    {
+      "name": "LaboratoryFinale",
+      "discriminator": [
+        192,
+        64,
+        20,
+        62,
+        252,
+        51,
+        152,
+        49
       ]
     }
   ],
@@ -16424,7 +15544,7 @@
     {
       "code": 6122,
       "name": "InvalidRandomnessAccount",
-      "msg": "Not a Switchboard randomness account of the trusted program"
+      "msg": "Not the SlotHashes sysvar"
     },
     {
       "code": 6123,
@@ -16439,7 +15559,7 @@
     {
       "code": 6125,
       "name": "RandomnessCommitMissing",
-      "msg": "Switchboard randomness commit must precede this instruction in the same transaction"
+      "msg": "Randomness commit is missing from this transaction"
     },
     {
       "code": 6126,
@@ -20415,6 +19535,26 @@
           },
           {
             "name": "level",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LaboratoryFinale",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "seals",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]

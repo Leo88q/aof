@@ -7,11 +7,11 @@ import { configPda, lotteryRoundPda, lotteryTicketPda, lotteryTicketCounterPda }
 import { authorityOnly, coSign, pk } from "../lib/tx";
 import { requireAdmin } from "../middleware/adminAuth";
 import { requireCircuitOpen, requireWalletLimits, requireIdempotency } from "../middleware/security";
-import { reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, fetchPendingCommit, buildRevealInstructions } from "../lib/vrfSettlement";
 
 /**
- * [F-06] Lottery with a player-funded pool and a Switchboard draw:
+ * [F-06] Lottery with a player-funded pool and a slot-hash draw:
  *   - tickets escrow the full price on the round (nothing reaches the treasury
  *     before the draw; an undrawn round refunds every ticket in full);
  *   - the operator closes sales by committing the draw (anyone may after the
@@ -25,6 +25,23 @@ const r = Router();
  * a mismatch is caught by the program's `max_price_lamports` check, not by
  * trusting this constant. */
 const LOTTERY_TICKET_PRICE_LAMPORTS = new BN(800_000);
+
+
+/** Public chamber list. SOL is the only asset the program can escrow.
+ * SKR and Potato stay sealed here so a client cannot invent a charge. */
+r.get("/pools", (_req, res) => {
+  res.json({
+    pools: [
+      {
+        id: "sol", asset: "SOL", status: "live", priceLamports: LOTTERY_TICKET_PRICE_LAMPORTS.toString(),
+        winners: 1, prizeBps: 7000, houseBps: 3000, maxTicketsPerWallet: 10,
+        salesSeconds: 7 * 86400, refundAfterSeconds: 14 * 86400,
+      },
+      { id: "skr", asset: "SKR", status: "sealed", reason: "SKR_MINT_NOT_CONFIGURED" },
+      { id: "potato", asset: "POTATO", status: "sealed", reason: "POTATO_ESCROW_NOT_DEPLOYED" },
+    ],
+  });
+});
 
 const u64 = (value: unknown, field: string): BN => {
   const text = String(value ?? "");
@@ -126,12 +143,14 @@ r.post("/ticket/buy", requireCircuitOpen, requireWalletLimits("lottery_buy"), re
   }
 });
 
-/** Operator closes sales and commits the draw to a Switchboard pool slot. */
+/** Operator closes sales and commits the draw on the same path as pack opening. */
 r.post("/draw/commit", requireAdmin, async (req, res) => {
   try {
     const roundId = u64(req.body.roundId, "roundId");
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
     const ix = await (program.methods as any)
       .commitLotteryDraw()
       .accounts({
@@ -143,6 +162,10 @@ r.post("/draw/commit", requireAdmin, async (req, res) => {
       .instruction();
     const sig = await authorityOnly([ix]);
     res.json({ sig });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }

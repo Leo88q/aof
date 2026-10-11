@@ -5,6 +5,8 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {AUTHORITY_PUBKEY} from "../config";
 import { connection, program } from "../provider";
 import { authPda, configPda, energyAccountPda, materialMintsPda, playerPda, issuanceCapPda } from "../lib/pda";
+import { tokenNeeds } from "../lib/resourceShortage";
+import { asUint } from "../lib/resourceShortageCore";
 import { authorityOnly, coSign, coSignQuoted, pk } from "../lib/tx";
 import { TOKEN_ACCOUNT_SIZE } from "../lib/accountSizes";
 import { requireExistingPlayer } from "../lib/playerAccount";
@@ -179,6 +181,11 @@ r.post("/exchange-energy", requireCircuitOpen, requireWalletLimits("resources_ex
     // (bn.js `lten` — «меньше или равно»).
     if (whole.lten(0)) throw new Error("dataAmount must be a positive whole number of DATA");
     const dataAmount = whole.mul(RESOURCE_UNIT);
+    const dataUnits = asUint(rawAmount);
+    if (dataUnits && dataUnits > 0n) {
+      const gate = await tokenNeeds(user, [["DATA", dataUnits]]);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
+    }
 
     const [energyAccount] = energyAccountPda(user);
     const userData = getAssociatedTokenAddressSync(dataMint, user);

@@ -136,14 +136,16 @@ if [ "$MATERIALS_HTTP" != "200" ]; then
   echo "   ✗ MaterialMints не проходит канонический валидатор: HTTP $MATERIALS_HTTP $(echo "$MATERIALS_JSON" | jq -rc '.error // empty')"
 else
   MATERIAL_MINTS="$(echo "$MATERIALS_JSON" | jq -r '.mints // {}')"
-  check_mint "MaterialMints.dataset  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.dataset // empty')"
-  check_mint "MaterialMints.neuron (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.neuron // empty')"
+  # /query/material-mints publishes canonical ResourceMintKey names (DATASET, NEURON).
+  # Older fixtures used the account field names (dataset, neuron). Accept both.
+  check_mint "MaterialMints.dataset  (data_harvester, quantum_transmitter → DATASET)" "$(echo "$MATERIAL_MINTS" | jq -r '.DATASET // .dataset // empty')"
+  check_mint "MaterialMints.neuron (neural_seeder → NEURON)" "$(echo "$MATERIAL_MINTS" | jq -r '.NEURON // .neuron // empty')"
 fi
 
 step "4/6 Решение"
 if [ "${#blockers[@]}" -gt 0 ]; then
   printf '   закрыто: %s\n' "${blockers[@]}"
-  die "выплаты не готовы, тумблер НЕ включаем: иначе сбор добычи сожжёт прочность инструмента без выплаты. Закройте пункты §1.3–1.5 плана (docs/UNBLOCK_PLAN_2026-09-30.md) и повторите"
+  die "выплаты не готовы, тумблер НЕ включаем: иначе сбор добычи сожжёт прочность инструмента без выплаты. Сначала закройте четыре выплаты из шагов выше и повторите"
 fi
 if [ "$MINING_ENABLED" = "true" ]; then
   ok "добыча уже включена — делать нечего"
@@ -173,7 +175,7 @@ else
   [ "$(echo "$AFTER" | jq -r '.miningEnabled')" = "true" ] || die "флаг не читается как true после включения: $AFTER"
   ok "miningEnabled=true"
   echo
-  echo "Дальше (порядок из docs/UNBLOCK_PLAN_2026-09-30.md §1):"
+  echo "Дальше:"
   echo "  1) игрок: start_mining, затем collect_mining — выплата приходит на минт из шага 3;"
   echo "  2) ремонт: POST /tools/repair должен отвечать 200 (Config.siliconMint/circuitMint уже заданы);"
   echo "  3) выключить обратно: POST /admin/config/mining {\"enabled\":false}"

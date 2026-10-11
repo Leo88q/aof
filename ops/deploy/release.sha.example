@@ -1,0 +1,2 @@
+# Copy to ops/deploy/release.sha (gitignored) and put the reviewed commit there.
+# ops/up.sh --apply refuses to start unless HEAD equals that file.

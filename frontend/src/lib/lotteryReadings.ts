@@ -7,6 +7,12 @@ const MAX_U64 = (1n << 64n) - 1n;
  * The purchase is signed with this value as the ceiling, so a program that
  * ever escrows more makes the transaction fail instead of overcharging. */
 export const LOTTERY_TICKET_PRICE_LAMPORTS = '800000';
+/** Must match `LOTTERY_SALES_SECONDS` and `LOTTERY_ROUND_TIMEOUT_SECONDS`. */
+export const LOTTERY_SALES_SECONDS = 7 * 86400;
+export const LOTTERY_REFUND_AFTER_SECONDS = 14 * 86400;
+export const LOTTERY_MAX_TICKETS_PER_ROUND = 10;
+export const LOTTERY_PRIZE_BPS = 7_000;
+export const LOTTERY_HOUSE_BPS = 3_000;
 export function lotteryU64(raw: unknown, zero = false): raw is string {
   return typeof raw === 'string' && (zero ? /^(0|[1-9][0-9]{0,19})$/ : /^[1-9][0-9]{0,19}$/).test(raw) &&
     BigInt(raw) <= MAX_U64;
@@ -71,7 +77,13 @@ export function readLotteryTickets(raw: unknown, round: LotteryRound, wallet: st
   return tickets;
 }
 
+export function lotterySalesMatureAt(round: LotteryRound): number {
+  return round.createdAt + LOTTERY_SALES_SECONDS;
+}
+export function lotteryRefundOpensAt(round: LotteryRound): number {
+  return round.createdAt + LOTTERY_REFUND_AFTER_SECONDS;
+}
 export function canRefundLotteryTicket(round: LotteryRound, now = Date.now()): boolean {
   return !round.drawn && !round.drawCommitted && Number.isFinite(now) &&
-    now >= (round.createdAt + 14 * 86400) * 1000;
+    now >= lotteryRefundOpensAt(round) * 1000;
 }

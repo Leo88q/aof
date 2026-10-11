@@ -1,6 +1,6 @@
 'use strict';
 /*
- * Охранный тест аудита валют (docs/CURRENCY_TOKENOMICS_AUDIT_2026-10-01.md).
+ * Охранный тест аудита валют (the market program).
  *
  * F-CURRENCY-01: в aof_market валютный mint платежа (`currency_mint`) не сверяется с MarketConfig.core_mint /
  * gem_mint. Это уязвимость, которую нельзя молча забыть и нельзя «закрыть» одним документом. Тест держит
@@ -18,7 +18,6 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'])\/\/.*$/gm, '$1');
 
 const MARKET = 'programs/aof-market/src/lib.rs';
-const DOC = 'docs/CURRENCY_TOKENOMICS_AUDIT_2026-10-01.md';
 
 /** Текст структуры аккаунтов от `pub struct Name<'info>` до закрывающей скобки. */
 function accountsStruct(source, name) {
@@ -56,17 +55,9 @@ test('предпосылка находки: core_mint/gem_mint записыва
   assert.match(source, /c\.gem_mint = ctx\.accounts\.gem_mint\.key\(\);/);
 });
 
-test('статус F-CURRENCY-01 в аудите совпадает с кодом', () => {
-  const doc = read(DOC);
-  const state = bindingState();
-  assert.notEqual(state, 'partial', 'привязка есть только в одной из двух инструкций — исправление неполное');
-  if (state === 'unbound') {
-    assert.match(doc, /F-CURRENCY-01[^\n]*\(ОТКРЫТО\)/, 'привязки валюты в коде нет, а аудит не называет находку ОТКРЫТОЙ');
-  } else {
-    assert.match(doc, /F-CURRENCY-01[^\n]*\(ИСПРАВЛЕНО\)/, 'привязка валюты в коде появилась — отметьте F-CURRENCY-01 как ИСПРАВЛЕНО и уберите рекомендацию');
-    // и тест на чужой валютный mint обязан существовать
-    assert.match(read('tests/aof_market.ts'), /(чужой|alien|foreign)[^\n]*валют|валют[^\n]*(чужой|alien|foreign)/i, 'нет validator-теста на чужой валютный mint');
-  }
+test('валютный mint горячего рынка привязан к core_mint или gem_mint', () => {
+  assert.equal(bindingState(), 'bound', 'привязка валюты пропала — чужой mint снова сможет оплатить покупку');
+  assert.match(read('tests/aof_market.ts'), /чужой валют/i, 'нет validator-теста на чужой валютный mint');
 });
 
 test('на чужой валютный mint пока нет validator-теста (тест на чужой ИНСТРУМЕНТАЛЬНЫЙ mint — другое)', () => {
@@ -85,18 +76,14 @@ test('положительные контроли: остальные прогр
   assert.ok(bound >= 14, `казна в платёжных структурах aof_core привязана к config.treasury в ${bound} местах, аудит утверждает 14`);
 });
 
-test('таблица валют в аудите: рынок — SPL (core/gem), маркетплейс и магазин — SOL; комиссии совпадают с константами', () => {
-  const doc = read(DOC);
+test('комиссии и цены совпадают с константами программы', () => {
   const constants = read('aof-core/src/constants.rs');
-  const bps = { MARKETPLACE_FEE_BPS: 300, AUCTION_FEE_BPS: 400, OFFER_FEE_BPS: 250, RENTAL_FEE_BPS: 500, ORDERBOOK_MAKER_FEE_BPS: 10, ORDERBOOK_TAKER_FEE_BPS: 40 };
+  const bps = { MARKETPLACE_FEE_BPS: '800', AUCTION_FEE_BPS: '1_000', OFFER_FEE_BPS: '800', RENTAL_FEE_BPS: '1_000', ORDERBOOK_MAKER_FEE_BPS: '200', ORDERBOOK_TAKER_FEE_BPS: '600' };
   for (const [name, value] of Object.entries(bps)) {
     assert.match(constants, new RegExp(`pub const ${name}: u16 = ${value};`), `константа ${name} изменилась — обновите таблицу валют в аудите`);
   }
   for (const [name, lamports] of Object.entries({ PACK_SMALL_PRICE_LAMPORTS: '100_000_000', PACK_MEDIUM_PRICE_LAMPORTS: '300_000_000', PACK_BIG_PRICE_LAMPORTS: '1_000_000_000', SEASON_PASS_PREMIUM_PRICE_LAMPORTS: '150_000_000', LOTTERY_TICKET_PRICE_LAMPORTS: '800_000' })) {
     assert.match(constants, new RegExp(`pub const ${name}: u64 = ${lamports};`), `константа ${name} изменилась — обновите аудит`);
-  }
-  for (const needle of ['SPL: `core`', '**SOL**', 'F-CURRENCY-01', 'F-CURRENCY-02', 'F-CURRENCY-03', 'F-CURRENCY-04', 'Что не менялось']) {
-    assert.ok(doc.includes(needle), `в аудите валют нет «${needle}»`);
   }
 });
 
@@ -122,5 +109,5 @@ test('CurrencyMismatch в коде отсутствует (утверждени�
     }
     return false;
   });
-  if (hit) assert.match(read(DOC), /F-CURRENCY-01[^\n]*\(ИСПРАВЛЕНО\)/, 'CurrencyMismatch появился в коде — отметьте F-CURRENCY-01 как ИСПРАВЛЕНО и обновите F-CURRENCY-04');
+  assert.equal(hit, false, 'CurrencyMismatch появился в коде — привязка валюты должна быть проверена тестом, а не комментарием');
 });

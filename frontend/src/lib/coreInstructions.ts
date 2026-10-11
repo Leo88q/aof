@@ -206,7 +206,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "commit_lottery_draw",
     discriminator: [33, 145, 155, 216, 175, 15, 179, 138],
-    accounts: ["config", "cranker", "lottery_round", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program"],
+    accounts: ["config", "cranker", "lottery_round", "vrf_slot", "recent_slothashes"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -215,7 +215,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "craft",
     discriminator: [161, 233, 177, 214, 243, 109, 161, 224],
-    accounts: ["config", "authority", "user", "gastank", "prev_tool", "prev_mint", "prev_token", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "neuron_mint", "user_neuron", "power_mint", "user_power", "mind_mint", "user_mind", "skr_mint", "user_skr", "token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "authority", "user", "gastank", "prev_tool", "prev_mint", "prev_token", "new_mint", "new_token", "new_tool_data", "auth", "rarity_counter", "craft_economy", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "data_mint", "user_data", "neuron_mint", "user_neuron", "power_mint", "user_power", "mind_mint", "user_mind", "token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -269,7 +269,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "draw_lottery",
     discriminator: [17, 188, 124, 77, 90, 34, 97, 19],
-    accounts: ["config", "cranker", "lottery_round", "treasury", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "cranker", "lottery_round", "treasury", "vrf_slot", "recent_slothashes", "token_program", "system_program"],
     actorIndexes: [1],
     signerIndexes: [1],
     authorityOnly: false,
@@ -278,7 +278,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "explore_reveal",
     discriminator: [16, 121, 80, 56, 125, 254, 216, 215],
-    accounts: ["config", "material_mints", "cranker", "exploration_commit", "user", "data_mint", "dataset_mint", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "auth", "escrow_data", "escrow_circuit", "escrow_silicon", "escrow_dataset", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "issuance_cap_circuit", "issuance_cap_silicon"],
+    accounts: ["config", "material_mints", "cranker", "exploration_commit", "user", "data_mint", "dataset_mint", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "auth", "escrow_data", "escrow_circuit", "escrow_silicon", "escrow_dataset", "vrf_slot", "recent_slothashes", "token_program", "associated_token_program", "system_program", "issuance_cap_circuit", "issuance_cap_silicon"],
     actorIndexes: [2, 4],
     signerIndexes: [2],
     authorityOnly: false,
@@ -287,7 +287,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_commit",
     discriminator: [89, 191, 80, 34, 38, 104, 53, 252],
-    accounts: ["config", "authority", "user", "auth", "tool", "tool_mint", "enchant_slot", "forge_commit", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "escrow_circuit", "escrow_silicon", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "authority", "user", "auth", "tool", "tool_mint", "enchant_slot", "forge_commit", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "escrow_circuit", "escrow_silicon", "vrf_slot", "recent_slothashes", "token_program", "system_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -296,7 +296,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_reveal",
     discriminator: [6, 210, 51, 190, 121, 55, 64, 35],
-    accounts: ["config", "auth", "circuit_mint", "escrow_circuit", "silicon_mint", "escrow_silicon", "cranker", "enchant_slot", "forge_commit", "user", "treasury", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "auth", "circuit_mint", "escrow_circuit", "silicon_mint", "escrow_silicon", "cranker", "enchant_slot", "forge_commit", "user", "treasury", "vrf_slot", "recent_slothashes", "token_program", "system_program"],
     actorIndexes: [6, 9],
     signerIndexes: [6],
     authorityOnly: false,
@@ -305,7 +305,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "forge_attempt_expire",
     discriminator: [206, 118, 31, 164, 99, 185, 27, 61],
-    accounts: ["config", "forge_commit", "user", "vrf_slot", "auth", "circuit_mint", "user_circuit", "escrow_circuit", "silicon_mint", "user_silicon", "escrow_silicon", "token_program"],
+    accounts: ["config", "forge_commit", "user", "treasury", "vrf_slot", "recent_slothashes", "auth", "circuit_mint", "user_circuit", "escrow_circuit", "silicon_mint", "user_silicon", "escrow_silicon", "token_program"],
     actorIndexes: [2],
     signerIndexes: [],
     authorityOnly: false,
@@ -476,7 +476,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "pack_open_commit",
     discriminator: [119, 24, 174, 81, 188, 146, 76, 40],
-    accounts: ["config", "authority", "user", "pack_config", "pack_commit", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "system_program"],
+    accounts: ["config", "authority", "user", "pack_config", "pack_commit", "vrf_slot", "recent_slothashes", "system_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -485,7 +485,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "pack_open_reveal",
     discriminator: [220, 51, 163, 236, 133, 22, 85, 61],
-    accounts: ["config", "cranker", "pack_commit", "user", "treasury", "mint", "user_token", "tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "cranker", "pack_commit", "user", "treasury", "mint", "user_token", "tool_data", "auth", "vrf_slot", "recent_slothashes", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [1, 3],
     signerIndexes: [1],
     authorityOnly: false,
@@ -494,7 +494,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "pack_open_expire",
     discriminator: [8, 126, 131, 194, 12, 202, 159, 29],
-    accounts: ["config", "pack_commit", "user", "vrf_slot"],
+    accounts: ["config", "pack_commit", "user", "treasury", "vrf_slot", "recent_slothashes"],
     actorIndexes: [2],
     signerIndexes: [],
     authorityOnly: false,
@@ -647,7 +647,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "reroll_random_commit",
     discriminator: [116, 32, 24, 82, 9, 94, 122, 236],
-    accounts: ["config", "authority", "user", "gastank", "reroll_config", "burn_tool", "burn_mint", "burn_token", "reroll_commit", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "authority", "user", "gastank", "reroll_config", "burn_tool", "burn_mint", "burn_token", "reroll_commit", "vrf_slot", "recent_slothashes", "token_program", "system_program"],
     actorIndexes: [2],
     signerIndexes: [1, 2],
     authorityOnly: false,
@@ -656,7 +656,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "reroll_random_reveal",
     discriminator: [123, 60, 249, 147, 211, 177, 53, 33],
-    accounts: ["config", "cranker", "reroll_commit", "user", "treasury", "new_mint", "new_token", "new_tool_data", "auth", "vrf_slot", "randomness", "vrf_authority", "oracle", "queue", "stats", "recent_slothashes", "reward_escrow", "wrapped_sol_mint", "program_state", "switchboard_program", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "cranker", "reroll_commit", "user", "treasury", "new_mint", "new_token", "new_tool_data", "auth", "vrf_slot", "recent_slothashes", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [1, 3],
     signerIndexes: [1],
     authorityOnly: false,
@@ -737,7 +737,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "start_exploration_commit",
     discriminator: [58, 145, 149, 221, 209, 9, 12, 173],
-    accounts: ["config", "authority", "material_mints", "user", "exploration_state", "tool_mint", "tool", "auth", "exploration_commit", "data_mint", "user_data", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "dataset_mint", "user_dataset", "escrow_data", "escrow_circuit", "escrow_silicon", "escrow_dataset", "vrf_slot", "randomness", "vrf_authority", "queue", "oracle", "recent_slothashes", "switchboard_program", "token_program", "system_program"],
+    accounts: ["config", "authority", "material_mints", "user", "exploration_state", "tool_mint", "tool", "auth", "exploration_commit", "data_mint", "user_data", "circuit_mint", "user_circuit", "silicon_mint", "user_silicon", "dataset_mint", "user_dataset", "escrow_data", "escrow_circuit", "escrow_silicon", "escrow_dataset", "vrf_slot", "recent_slothashes", "token_program", "system_program"],
     actorIndexes: [3],
     signerIndexes: [1, 3],
     authorityOnly: false,
@@ -998,7 +998,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "vrf_pool_add",
     discriminator: [234, 143, 61, 230, 212, 57, 8, 234],
-    accounts: ["config", "operator", "vrf_authority", "randomness", "vrf_slot", "reward_escrow", "queue", "program_state", "lut_signer", "lut", "wrapped_sol_mint", "switchboard_program", "address_lookup_table_program", "token_program", "associated_token_program", "system_program"],
+    accounts: ["config", "operator", "vrf_slot", "token_program", "associated_token_program", "system_program"],
     actorIndexes: [],
     signerIndexes: [1],
     authorityOnly: true,
@@ -1025,7 +1025,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "reroll_random_expire",
     discriminator: [165, 118, 63, 210, 134, 116, 167, 250],
-    accounts: ["config", "cranker", "reroll_commit", "user", "vrf_slot", "new_mint", "new_token", "new_tool_data", "auth", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
+    accounts: ["config", "cranker", "reroll_commit", "user", "treasury", "vrf_slot", "recent_slothashes", "new_mint", "new_token", "new_tool_data", "auth", "token_program", "associated_token_program", "system_program", "tool_metadata_registry", "metadata", "token_metadata_program"],
     actorIndexes: [1, 3],
     signerIndexes: [1],
     authorityOnly: false,
@@ -1034,7 +1034,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "explore_expire",
     discriminator: [95, 254, 71, 97, 162, 245, 109, 180],
-    accounts: ["config", "material_mints", "exploration_commit", "user", "vrf_slot", "auth", "data_mint", "user_data", "escrow_data", "circuit_mint", "user_circuit", "escrow_circuit", "silicon_mint", "user_silicon", "escrow_silicon", "dataset_mint", "user_dataset", "escrow_dataset", "token_program"],
+    accounts: ["config", "material_mints", "exploration_commit", "user", "vrf_slot", "recent_slothashes", "auth", "data_mint", "user_data", "escrow_data", "circuit_mint", "user_circuit", "escrow_circuit", "silicon_mint", "user_silicon", "escrow_silicon", "dataset_mint", "user_dataset", "escrow_dataset", "token_program"],
     actorIndexes: [3],
     signerIndexes: [],
     authorityOnly: false,
@@ -1043,7 +1043,7 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "expire_lottery_draw",
     discriminator: [194, 243, 73, 116, 68, 189, 235, 166],
-    accounts: ["config", "lottery_round", "vrf_slot"],
+    accounts: ["config", "lottery_round", "vrf_slot", "recent_slothashes"],
     actorIndexes: [],
     signerIndexes: [],
     authorityOnly: false,
@@ -1187,10 +1187,19 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
   {
     name: "claim_premium_season_reward",
     discriminator: [232, 33, 140, 20, 95, 238, 72, 199],
-    accounts: ["config", "authority", "material_mints", "season", "season_pass", "premium_claims", "circuit_mint", "user_circuit", "auth", "token_program", "issuance_cap_circuit"],
+    accounts: ["config", "authority", "material_mints", "season", "season_pass", "premium_claims", "silicon_mint", "user_silicon", "auth", "token_program", "issuance_cap_silicon"],
     actorIndexes: [],
     signerIndexes: [1],
     authorityOnly: true,
+    trailingAccounts: null,
+  },
+  {
+    name: "seal_laboratory",
+    discriminator: [45, 254, 248, 15, 161, 154, 213, 105],
+    accounts: ["config", "user", "material_mints", "auth", "finale", "model_mint", "user_model", "cryo_fluid_mint", "user_cryo_fluid", "volt_fluid_mint", "user_volt_fluid", "bio_fluid_mint", "user_bio_fluid", "nano_fluid_mint", "user_nano_fluid", "quantum_fluid_mint", "user_quantum_fluid", "amber_quartz_mint", "user_amber_quartz", "soul_core_mint", "user_soul_core", "issuance_cap_soul", "token_program", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
     trailingAccounts: null,
   },
 

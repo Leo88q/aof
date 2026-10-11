@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { useNav } from "../../nav/NavContext";
+import { NavHeader } from "../../components/NavHeader";
+import { PacksPage } from "./PacksPage";
 import { craftCopy } from "../../i18n/craftCopy";
 import { homeResourceNames } from "../../i18n/homeDetail";
 import { toolName, toolsCopy } from "../../i18n/toolsCopy";
@@ -12,15 +15,19 @@ import { useWalletStore } from "../../store/walletStore";
 import { Card } from "../../components/ui/Card";
 import { RARITY_META, rarityKey } from "../../lib/toolMeta";
 import { CRAFT_RESOURCES, readCraftBalances, readCraftMints, readCraftQuote, type CraftAmounts, type CraftMints } from "../../lib/craftReadings";
+import { formatAmount, formatResourceShortage } from "../../lib/resourceShortageMessage";
 import { resourceIcon, UI_ICONS, toolPlate, TOOL_RARITIES } from "../../lib/visualAssets";
 import { ResourceGlyph } from "../../components/visual/ResourceGlyph";
 import { ArtPlate } from "../../components/visual/ArtPlate";
 import { shortAddr, useFlash } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { ChainClocks } from "../../components/ChainClocks";
+import { SeederFuse } from "../../components/SeederFuse";
 
 export function CraftPage() {
   const { language } = useLocale();
   const copy = craftCopy[language];
+  const { push } = useNav();
   const { address } = useWalletStore();
   const walletRef = useRef(address);
   walletRef.current = address;
@@ -193,7 +200,9 @@ export function CraftPage() {
       if (CRAFT_RESOURCES.some(({ key }) => latestBalances[key] < latest[key])) {
         setBalances(latestBalances);
         setBalanceFor(address);
-        flash(copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({ key }) => latestBalances[key] < latest[key]).map(({ key }) => resourceName(key)).join(', ')));
+        flash(formatResourceShortage(language, CRAFT_RESOURCES.filter(({ key }) => latestBalances[key] < latest[key]).map(({ key, chain }) => ({
+          resource: chain, have: formatAmount(latestBalances[key]) ?? '', need: formatAmount(latest[key]) ?? '',
+        }))));
         return;
       }
       flash(copy.forging);
@@ -235,6 +244,7 @@ export function CraftPage() {
   return (
     <div lang={language} className="p-4 pt-2 pb-24 space-y-4 min-w-0">
       <p className="text-straw text-xs">{copy.intro}</p>
+      <ChainClocks />
       {txStatus && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
           className="text-xs px-3 py-2 rounded-xl bg-soil-800 border border-straw/20 text-parchment">
@@ -245,11 +255,16 @@ export function CraftPage() {
       <Card>
         <h3 className="text-parchment font-semibold mb-3">{copy.select}</h3>
         {!address || knownTools === null || knownTools.length === 0 ? (
-          <p role="status" className="text-straw text-xs text-center py-4">
-            {!address ? copy.connect : knownTools === null
-              ? toolsLoading || loadedFor !== address && tools !== null ? copy.toolsLoading : copy.toolsUnavailable
-              : copy.noTools}
-          </p>
+          <div className="grid gap-2">
+            <p role="status" className="text-straw text-xs text-center py-4">
+              {!address ? copy.connect : knownTools === null
+                ? toolsLoading || loadedFor !== address && tools !== null ? copy.toolsLoading : copy.toolsUnavailable
+                : copy.noTools}
+            </p>
+            {address && knownTools !== null && knownTools.length === 0 && (
+              <button type="button" className="btn btn-primary" onClick={() => push("tools", "packs", (<><NavHeader headerId="capsules" tabKey="tools" /><PacksPage /></>))}>{copy.openCapsules}</button>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {knownTools.map((t) => {
@@ -300,7 +315,9 @@ export function CraftPage() {
           {!resMints && <p role="status" className="text-straw text-xs mt-2">{mintsStatus === "loading" ? copy.mintsLoading : copy.mintsUnavailable}</p>}
           {resMints && !activeBalances && <p role="status" className="text-straw text-xs mt-2">{balancesLoading || balanceFor !== address ? copy.balancesLoading : copy.balancesUnavailable}</p>}
           {!quoteForTarget && <p role="status" className="text-straw text-xs mt-2">{quoteLoading ? copy.quoteLoading : copy.quoteUnavailable}</p>}
-          {quoteForTarget && activeBalances && !sufficient && <p className="text-straw text-xs mt-2">{copy.insufficient.replace('{resource}', CRAFT_RESOURCES.filter(({key}) => activeBalances[key] < quoteForTarget[key]).map(({key}) => resourceName(key)).join(', '))}</p>}
+          {quoteForTarget && activeBalances && !sufficient && <p className="text-straw text-xs mt-2 [overflow-wrap:anywhere]">{formatResourceShortage(language, CRAFT_RESOURCES.filter(({ key }) => activeBalances[key] < quoteForTarget[key]).map(({ key, chain }) => ({
+            resource: chain, have: formatAmount(activeBalances[key]) ?? '', need: formatAmount(quoteForTarget[key]) ?? '',
+          })))}</p>}
         </Card>
       )}
 
@@ -341,6 +358,8 @@ export function CraftPage() {
           </button>
         </Card>
       )}
+
+      <SeederFuse tools={knownTools} address={address} />
 
       {craftReceipt?.address === address && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}

@@ -172,7 +172,12 @@ for (const file of vrfSources) {
     }
   }
 }
-if (pinnedAddresses === 0) problems.push("не удалось извлечь адреса из vrf.rs — проверка реестра деградировала");
+if (pinnedAddresses === 0) {
+  const combined = vrfSources.map((file) => read(file)).join("\n");
+  if (/Pubkey::new_from_array|SWITCHBOARD_ON_DEMAND/.test(combined)) {
+    problems.push("не удалось извлечь адреса из vrf.rs — проверка реестра деградировала");
+  }
+}
 
 // ------------------------------------------------- 4. апстрим-зависимости --
 for (const dep of upstream.dependencies) {

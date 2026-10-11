@@ -1,12 +1,13 @@
 /**
- * [F-06] Settlement builders for every Switchboard-backed mechanic.
+ * [F-06] Settlement builders. Packs, lottery, exploration, forge and random
+ * reroll reveal through the same pack-opening path. Drum does not.
  *
  * One place knows the account layout of each commit / reveal / refund
  * instruction, so the HTTP routes (commit + player self-settlement) and the
  * vrf-settler worker (automatic reveal + refund) cannot drift apart. The
  * on-chain programs re-check every account, so a mistake here fails closed.
  */
-import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { PublicKey, SystemProgram, SYSVAR_SLOT_HASHES_PUBKEY, TransactionInstruction } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -14,11 +15,10 @@ import {
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import BN from "bn.js";
-import { program, questsProgram, connection } from "../provider";
+import { program, connection } from "../provider";
 import {
   authPda,
   configPda,
-  drumCommitPda,
   enchantSlotPda,
   issuanceCapPda,
   materialMintsPda,
@@ -31,12 +31,12 @@ import {
   tokenMetadataPda,
   TOKEN_METADATA_PROGRAM_ID,
 } from "./pda";
-import { VRF_REFUND_AFTER_SLOTS, vrfComputeBudget, vrfReveal, vrfSlotPda } from "./vrf";
+import { packPathReveal, vrfComputeBudget } from "./vrf";
 import { coSign } from "./tx";
 import { coSignWithVrfLookupTable } from "./vrfLookupTableTransactions";
 
-export type Mechanic = "pack" | "reroll" | "exploration" | "forge" | "lottery" | "drum";
-export const MECHANICS: Mechanic[] = ["pack", "reroll", "exploration", "forge", "lottery", "drum"];
+export type Mechanic = "pack" | "reroll" | "exploration" | "forge" | "lottery";
+export const MECHANICS: Mechanic[] = ["pack", "reroll", "exploration", "forge", "lottery"];
 
 export type PendingCommit = {
   mechanic: Mechanic;
@@ -49,11 +49,21 @@ export type PendingCommit = {
   account: any;
 };
 
-export type CommitPhase = "revealable" | "refundable";
+export type CommitPhase = "waiting" | "revealable" | "refundable";
 
-/** Pure: which settlement path is open at `currentSlot` (never both). */
-export function commitPhase(commitSlot: number, currentSlot: number): CommitPhase {
-  return currentSlot < commitSlot + VRF_REFUND_AFTER_SLOTS ? "revealable" : "refundable";
+/**
+ * Pure: which settlement path is open at `currentSlot`.
+ * `waiting` is before the future seed slot: reveal would fail and refund is
+ * not open yet. Reveal and refund never overlap.
+ */
+const LAST_SEED_OFFSET = 128;
+const HASH_RETENTION = 512;
+
+export function commitPhase(commitSlot: number, currentSlot: number, _seedSlot = commitSlot + 32): CommitPhase {
+  const lastSeed = commitSlot + LAST_SEED_OFFSET;
+  if (currentSlot <= lastSeed) return "waiting";
+  if (currentSlot < lastSeed + HASH_RETENTION) return "revealable";
+  return "refundable";
 }
 
 const ata = (mint: PublicKey, owner: PublicKey) => getAssociatedTokenAddressSync(mint, owner, true);
@@ -66,8 +76,8 @@ async function materialMints(): Promise<any> {
   return (program.account as any).materialMints.fetch(materialMintsPda()[0]);
 }
 
-function programFor(mechanic: Mechanic): any {
-  return mechanic === "drum" ? questsProgram : program;
+function programFor(_mechanic: Mechanic): any {
+  return program;
 }
 
 // ---------------------------------------------------------------- discovery
@@ -98,9 +108,6 @@ export async function listPendingCommits(mechanics: Mechanic[] = MECHANICS): Pro
       const rounds: Array<{ publicKey: PublicKey; account: any }> = await acc.lotteryRound.all();
       push(mechanic, rounds.filter((r) => r.account.drawCommitted && !r.account.drawn), () => null, (a) => Number(a.drawCommitSlot));
     }
-    if (mechanic === "drum") {
-      push(mechanic, await (questsProgram.account as any).drumCommit.all(), (a) => a.user, (a) => Number(a.commitSlot));
-    }
   }
   return out;
 }
@@ -108,7 +115,7 @@ export async function listPendingCommits(mechanics: Mechanic[] = MECHANICS): Pro
 export async function fetchPendingCommit(mechanic: Mechanic, address: PublicKey): Promise<PendingCommit | null> {
   const names: Record<Mechanic, string> = {
     pack: "packCommit", reroll: "rerollCommit", exploration: "explorationCommit", forge: "forgeCommit",
-    lottery: "lotteryRound", drum: "drumCommit",
+    lottery: "lotteryRound",
   };
   const account = await (programFor(mechanic).account as any)[names[mechanic]].fetchNullable(address);
   if (!account) return null;
@@ -129,7 +136,8 @@ export async function fetchPendingCommit(mechanic: Mechanic, address: PublicKey)
 /** Compute budget + the program's reveal instruction, settled by `cranker`. */
 export async function buildRevealInstructions(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction[]> {
   const prog = programFor(c.mechanic);
-  const { params, accounts: vrf } = await vrfReveal(prog, connection, c.randomness, cranker);
+  // Every named room settles the way pack opening does.
+  const { params, accounts: vrf } = packPathReveal(prog, c.randomness);
   const common = {
     ...vrf,
     tokenProgram: TOKEN_PROGRAM_ID,
@@ -196,15 +204,6 @@ export async function buildRevealInstructions(c: PendingCommit, cranker: PublicK
       }).instruction();
       break;
     }
-    case "drum": {
-      const [questConfig] = questConfigPda();
-      const qc: any = await (questsProgram.account as any).questConfig.fetch(questConfig);
-      ix = await (questsProgram.methods as any).drumReveal(params).accounts({
-        drumCommit: c.address, questConfig, cranker, user: a.user, treasuryMascot: qc.treasuryMascot,
-        mascotMint: qc.mascotMint, userMascot: ata(qc.mascotMint, a.user), ...withAta,
-      }).instruction();
-      break;
-    }
   }
   return [...vrfComputeBudget(), ix];
 }
@@ -251,7 +250,8 @@ async function buildMissingRefundAtaInstructions(c: PendingCommit, payer: Public
 
 async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<TransactionInstruction> {
   const prog = programFor(c.mechanic);
-  const vrfSlot = vrfSlotPda(prog.programId, c.randomness);
+  const vrfSlot = c.randomness;
+  const recentSlothashes = SYSVAR_SLOT_HASHES_PUBKEY;
   const config = configPda()[0];
   const a = c.account;
   const withAta = {
@@ -262,12 +262,12 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
   switch (c.mechanic) {
     case "pack":
       return await (program.methods as any).packOpenExpire().accounts({
-        config, packCommit: c.address, user: a.user, vrfSlot,
+        config, packCommit: c.address, user: a.user, treasury: (await coreConfig()).treasury, vrfSlot, recentSlothashes,
       }).instruction();
     case "reroll": {
       const [newMint] = rerollMintPda(c.address);
       return await (program.methods as any).rerollRandomExpire().accounts({
-        config, cranker, rerollCommit: c.address, user: a.user, vrfSlot,
+        config, cranker, rerollCommit: c.address, user: a.user, treasury: (await coreConfig()).treasury, vrfSlot, recentSlothashes,
         newMint, newToken: ata(newMint, a.user), newToolData: toolPda(newMint)[0], auth: authPda()[0],
         toolMetadataRegistry: toolMetadataRegistryPda()[0],
         metadata: tokenMetadataPda(newMint)[0],
@@ -279,7 +279,7 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
       const mm = await materialMints();
       // Refunds go to the player's existing canonical ATAs (see ExploreExpire).
       return await (program.methods as any).exploreExpire().accounts({
-        config, materialMints: materialMintsPda()[0], explorationCommit: c.address, user: a.user, vrfSlot,
+        config, materialMints: materialMintsPda()[0], explorationCommit: c.address, user: a.user, vrfSlot, recentSlothashes,
         auth: authPda()[0],
         dataMint: cfg.dataMint, userData: ata(cfg.dataMint, a.user), escrowData: resourceEscrowAta(cfg.dataMint),
         circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user), escrowCircuit: resourceEscrowAta(cfg.circuitMint),
@@ -291,7 +291,7 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
     case "forge": {
       const cfg = await coreConfig();
       return await (program.methods as any).forgeAttemptExpire().accounts({
-        config, forgeCommit: c.address, user: a.user, vrfSlot,
+        config, forgeCommit: c.address, user: a.user, treasury: (await coreConfig()).treasury, vrfSlot, recentSlothashes,
         auth: authPda()[0], circuitMint: cfg.circuitMint, userCircuit: ata(cfg.circuitMint, a.user),
         escrowCircuit: resourceEscrowAta(cfg.circuitMint),
         siliconMint: cfg.siliconMint, userSilicon: ata(cfg.siliconMint, a.user),
@@ -300,41 +300,9 @@ async function refundInstruction(c: PendingCommit, cranker: PublicKey): Promise<
     }
     case "lottery":
       return await (program.methods as any).expireLotteryDraw().accounts({
-        config, lotteryRound: c.address, vrfSlot,
+        config, lotteryRound: c.address, vrfSlot, recentSlothashes,
       }).instruction();
-    case "drum": {
-      const [questConfig] = questConfigPda();
-      const qc: any = await (questsProgram.account as any).questConfig.fetch(questConfig);
-      return await (questsProgram.methods as any).drumExpire().accounts({
-        drumCommit: c.address, questConfig, cranker, user: a.user, treasuryMascot: qc.treasuryMascot,
-        mascotMint: qc.mascotMint, userMascot: ata(qc.mascotMint, a.user), vrfSlot, ...withAta,
-      }).instruction();
-    }
   }
-}
-
-export type DrumOutcome =
-  | { state: "settled"; prize: number; signature: string; value: string }
-  | { state: "refunded"; amount: number; signature: string }
-  | { state: "none" };
-
-/**
- * Drum outcome in one transaction's logs. The drum pays mascots instead of
- * minting an NFT, so once its (per-user, reused) commit PDA is closed the
- * result only lives in events: DrumRevealed carries the prize and the oracle
- * value (anyone can recompute drum_prize), DrumRefunded the refunded price.
- * "committed" marks a newer spin that is not settled yet.
- */
-export function drumOutcomeFromLogs(logs: string[], signature: string, parser: { parseLogs(logs: string[]): Iterable<{ name: string; data: any }> }): DrumOutcome | "committed" | null {
-  for (const ev of parser.parseLogs(logs)) {
-    const name = ev.name.charAt(0).toUpperCase() + ev.name.slice(1);
-    if (name === "DrumRevealed") {
-      return { state: "settled", prize: Number(ev.data.prize), signature, value: Buffer.from(ev.data.value).toString("hex") };
-    }
-    if (name === "DrumRefunded") return { state: "refunded", amount: Number(ev.data.amount), signature };
-    if (name === "DrumCommitted") return "committed";
-  }
-  return null;
 }
 
 /** Where the settlement NFT of a tool-producing commit lives (for status APIs). */
@@ -342,10 +310,6 @@ export function settlementMint(mechanic: Mechanic, commit: PublicKey): PublicKey
   if (mechanic === "pack") return packMintPda(commit)[0];
   if (mechanic === "reroll") return rerollMintPda(commit)[0];
   return null;
-}
-
-export function drumCommitAddress(user: PublicKey): PublicKey {
-  return drumCommitPda(user)[0];
 }
 
 export function toBn(value: string | number | bigint): BN {
@@ -373,7 +337,12 @@ export async function selfSettleTransaction(mechanic: Mechanic, address: PublicK
     (error as { status?: number }).status = 403;
     throw error;
   }
-  const phase = commitPhase(commit.commitSlot, await connection.getSlot("confirmed"));
+  const phase = commitPhase(commit.commitSlot, await connection.getSlot("confirmed"), commit.seedSlot);
+  if (phase === "waiting") {
+    const error = new Error("SEED_SLOT_PENDING");
+    (error as { status?: number }).status = 409;
+    throw error;
+  }
   const ixs = phase === "revealable"
     ? await buildRevealInstructions(commit, player)
     : await buildRefundInstructions(commit, player);
@@ -386,7 +355,7 @@ export async function selfSettleTransaction(mechanic: Mechanic, address: PublicK
 }
 
 export type CommitStatus =
-  | { state: "pending"; phase: CommitPhase; commitSlot: number; currentSlot: number; refundAfterSlot: number }
+  | { state: "pending"; phase: CommitPhase; commitSlot: number; seedSlot: number; currentSlot: number; refundAfterSlot: number }
   | { state: "settled" | "refunded" | "unknown"; mint?: string; tool?: { toolType: string; rarity: string; durability: number } };
 
 const RARITY_NAMES = ["common", "uncommon", "rare", "epic", "legendary"];
@@ -403,10 +372,11 @@ export async function commitStatus(mechanic: Mechanic, address: PublicKey): Prom
     const currentSlot = await connection.getSlot("confirmed");
     return {
       state: "pending",
-      phase: commitPhase(pending.commitSlot, currentSlot),
+      phase: commitPhase(pending.commitSlot, currentSlot, pending.seedSlot),
       commitSlot: pending.commitSlot,
+      seedSlot: pending.seedSlot,
       currentSlot,
-      refundAfterSlot: pending.commitSlot + VRF_REFUND_AFTER_SLOTS,
+      refundAfterSlot: pending.commitSlot + LAST_SEED_OFFSET + HASH_RETENTION,
     };
   }
   const mint = settlementMint(mechanic, address);

@@ -27,8 +27,10 @@ import {
 } from "../lib/accountSizes";
 import { requireCircuitOpen, requireWalletLimits } from "../middleware/security";
 import { requireAdmin } from "../middleware/adminAuth";
-import { randomNonce, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
+import { randomNonce, releasePoolSlot, reservePoolSlot, vrfCommitAccounts } from "../lib/vrf";
 import { commitStatus, selfSettleTransaction } from "../lib/vrfSettlement";
+import { craftBundleUnits, tokenNeeds } from "../lib/resourceShortage";
+import { FEE_PER_REROLL_MICROS } from "../lib/resourceShortageCore";
 
 const r = Router();
 
@@ -65,6 +67,11 @@ r.post("/fuse", async (req, res) => {
     const targetRarity = rarityOf(toolAccount.rarity) + 1;
     if (!(targetRarity >= 1 && targetRarity < RARITIES.length)) {
       throw new Error("Reroll target rarity is out of range");
+    }
+    const bundle = await craftBundleUnits(targetRarity - 1);
+    if (bundle) {
+      const gate = await tokenNeeds(user, bundle, undefined, FEE_PER_REROLL_MICROS);
+      if (gate.kind === "short") return res.status(400).json(gate.body);
     }
     const [rarityCounter] = rarityCounterPda(targetRarity);
     const resourceMints = {
@@ -129,7 +136,7 @@ r.post("/fuse", async (req, res) => {
 /**
  * [F-06] Random reroll: burn one tool, receive a random one. Operator
  * co-signed commit (fee escrowed from the gas tank, odds snapshotted,
- * Switchboard commit on a pool slot); the vrf-settler reveals it, or the
+ * the same pool-slot commit pack opening uses); the vrf-settler reveals it, or the
  * player can with POST /random/reveal. The new NFT is the PDA mint
  * [reroll_mint, rerollCommit].
  */
@@ -141,7 +148,9 @@ r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"
     const nonce = randomNonce();
     const [rerollCommit] = rerollCommitPda(user, nonce);
     const slot = await reservePoolSlot(program, connection);
-    const vrf = await vrfCommitAccounts(program, connection, slot);
+    let vrf;
+    try {
+    vrf = await vrfCommitAccounts(program, connection, slot);
 
     const ix = await (program.methods as any)
       .rerollRandomCommit(new BN(nonce))
@@ -162,6 +171,10 @@ r.post("/random/commit", requireCircuitOpen, requireWalletLimits("reroll_commit"
       .instruction();
     const tx = await coSign([ix], user);
     res.json({ tx, rerollCommit: rerollCommit.toBase58(), mint: rerollMintPda(rerollCommit)[0].toBase58(), nonce });
+    } catch (error) {
+      releasePoolSlot(slot);
+      throw error;
+    }
   } catch (e: any) {
     res.status(e.status || 400).json({ error: e.message });
   }

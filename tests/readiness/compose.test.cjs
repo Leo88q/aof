@@ -99,3 +99,22 @@ test('F-06 vrf-settler is mandatory, signs with its own fee-only key and has a l
   assert.match(read('docker-compose.secrets.yml'), /vrf_settler_secret_key:\n    file: \.\/secrets\/vrf_settler_secret_key/);
   for (const file of composeFiles) assert.doesNotMatch(read(file), /commit-expirer/, `${file}: the removed worker is still referenced`);
 });
+
+test('product VPS overlay mounts the settler fee wallet and blanks the operator key', () => {
+  const text = read('docker-compose.vps.yml');
+  assert.match(text, /file: \.\/secrets\/vrf_settler_secret_key/);
+  assert.doesNotMatch(text, /secrets\/authority_secret_key/);
+  const backend = serviceBlock(text, 'backend');
+  const settler = serviceBlock(text, 'vrf-settler');
+  assert.match(backend, /AUTHORITY_MODE: read-only/);
+  assert.match(backend, /AUTHORITY_SECRET_KEY: ""/);
+  assert.match(backend, /TRUST_PROXY_HOPS: "1"/);
+  assert.doesNotMatch(backend, /secrets:/);
+  assert.match(settler, /AUTHORITY_MODE: read-only/);
+  assert.match(settler, /AUTHORITY_SECRET_KEY: ""/);
+  assert.match(settler, /VRF_SETTLER_SECRET_KEY_FILE: \/run\/secrets\/vrf_settler_secret_key/);
+  assert.match(backend, /AOF_PROCESS_ROLE: api/);
+  assert.match(settler, /AOF_PROCESS_ROLE: vrf-settler/);
+  assert.match(settler, /ADMIN_TOKEN: settler-does-not-hold-the-admin-token/);
+  assert.doesNotMatch(settler, /authority_secret_key/);
+});

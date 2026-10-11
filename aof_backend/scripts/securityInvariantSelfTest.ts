@@ -35,7 +35,6 @@ const lottery = read("aof-core/src/instructions/lottery.rs");
 const exploration = read("aof-core/src/instructions/exploration.rs");
 const pack = read("aof-core/src/instructions/pack_open_commit.rs");
 const randomReroll = read("aof-core/src/instructions/reroll_random.rs");
-const questsDrum = read("programs/aof-quests/src/instructions/drum/drum_commit.rs");
 const rebirth = read("programs/aof-rebirth/src/instructions/do_rebirth.rs");
 
 // Rental regression: a listing must not hand out an active tool, and a sale
@@ -73,39 +72,30 @@ for (const guard of ["is_resource_mint", "get_associated_token_address", "TokenS
 assert.match(read("aof_backend/src/routes/rebirth.ts"), /remainingAccounts/,
   "the backend must hand the surplus list to the atomic reset");
 
-// The historical raw-atom drum and the proposed whole-MIND V2 both remain
-// closed for NEW payments. Neither the presence of VRF paths nor a bank pause
-// switch is sufficient to open sales; paid refunds/reveals still use vrf.rs.
-const v2Spin = read("programs/aof-quests/src/instructions/drum/mind_spin.rs");
-assert.match(questsDrum, /require!\(false, QuestError::Paused\)/, "legacy drum must stay disabled");
-assert.match(v2Spin, /require!\(false, QuestError::FeatureDisabled\)/, "V2 paid spin must stay disabled");
-assert.match(read("aof_backend/src/routes/drum.ts"), /r\.post\("\/commit"[^\n]*\n\s*res\.status\(503\)/,
-  "the backend must reject new drum payments");
-for (const [name, source] of [
-  ["legacy drum", questsDrum + read("programs/aof-quests/src/instructions/drum/drum_reveal.rs")
-    + read("programs/aof-quests/src/instructions/drum/drum_expire.rs")],
-  ["MIND V2", v2Spin],
-] as const) {
-  assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} must use Switchboard`);
-  for (const fn of ["vrf::commit(", "vrf::reveal(", "vrf::release_for_refund("])
-    assert.ok(source.includes(fn), `${name} needs ${fn} for already-paid spins`);
+for (const rel of [
+  "programs/aof-quests/src/instructions/drum/drum_commit.rs",
+  "programs/aof-quests/src/instructions/drum/mind_spin.rs",
+  "aof_backend/src/routes/drum.ts",
+]) {
+  assert.equal(fs.existsSync(path.join(repo, rel)), false, `${rel} returned`);
 }
 
-// [F-06] Other randomness mechanics are live only through the program-owned
-// Switchboard pool: commit via vrf::commit, permissionless reveal via
-// vrf::reveal, refund only after the window via vrf::release_for_refund.
-for (const [name, source, steps] of [
+// [F-06] Live randomness is the program-owned slot-hash pool: commit, reveal,
+// then unsettled classification. An aged hash pays the treasury.
+for (const [name, source] of [
   ["packs", read("aof-core/src/instructions/pack_open_commit.rs") + read("aof-core/src/instructions/pack_open_reveal.rs")
-    + read("aof-core/src/instructions/pack_open_expire.rs"), 3],
-  ["random reroll", randomReroll, 3],
-  ["exploration", exploration, 3],
-  ["forge", forge, 3],
-  ["lottery", lottery, 3],
+    + read("aof-core/src/instructions/pack_open_expire.rs")],
+  ["random reroll", randomReroll],
+  ["exploration", exploration],
+  ["forge", forge],
+  ["lottery", lottery],
 ] as const) {
-  assert.doesNotMatch(source, /require!\(false/, `${name} is still hard-disabled`);
-  assert.doesNotMatch(source, /hash_secret|get_slot_hash|slot_hashes/, `${name} still uses the legacy commit-reveal`);
-  const used = ["vrf::commit(", "vrf::reveal(", "vrf::release_for_refund("].filter((f) => source.includes(f));
-  assert.equal(used.length, steps, `${name}: commit, reveal and refund must all go through vrf.rs`);
+  assert.doesNotMatch(source, /require!\(\s*false/, `${name} is still hard-disabled`);
+  assert.doesNotMatch(source, /hash_secret|derive_entropy|switchboard/i, `${name} still takes an oracle or a secret`);
+  for (const fn of ["vrf::commit(", "vrf::reveal(", "vrf::unsettled(", "vrf::release_lock("]) {
+    assert.ok(source.includes(fn), `${name} needs ${fn}`);
+  }
+  assert.ok(source.includes("TreasuryForfeit"), `${name} must not refund a knowable roll to the player`);
 }
 
 const coreIdl = JSON.parse(read("aof_backend/src/idl/aof_core.json"));
@@ -258,7 +248,7 @@ assert.match(section(core, "pub struct PackOpenReveal", "pub struct PackOpenExpi
 const packExpireCtx = section(core, "pub struct PackOpenExpire", "// ----- Reroll");
 assert.match(packExpireCtx, /close = user/);
 assert.match(packExpireCtx, /address = pack_commit\.user/);
-assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /vrf::release_for_refund/);
+assert.match(read("aof-core/src/instructions/pack_open_expire.rs"), /vrf::release_lock/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "pack_open_expire"), "pack_open_expire missing from committed IDL");
 assert.ok(coreIdl.errors.some((error: any) => error.name === "CommitNotExpired"));
 assert.ok(coreIdl.errors.some((error: any) => error.name === "RevealWindowClosed"));
@@ -274,13 +264,17 @@ assert.match(forgeExpireCtx, /associated_token::authority = user/);
 assert.match(forge, /fc\.circuit_burned = circuit_cost/);
 assert.match(forge, /fc\.silicon_burned = silicon_cost/);
 const forgeExpire = fnBodyOf(forge, "expire_handler");
-assert.match(forgeExpire, /vrf::release_for_refund/);
+assert.match(forgeExpire, /vrf::release_lock/);
 assert.equal((forgeExpire.match(/refund_auth_escrow\(/g) ?? []).length, 2,
   "a timed-out forge attempt returns both escrowed resources to the user exactly once");
 assert.match(forge, /fn refund_auth_escrow[\s\S]*token::transfer/,
   "refunds transfer pre-existing escrowed tokens instead of minting them");
-assert.match(forgeExpire, /circuit_refunded: circuit/);
-assert.match(forgeExpire, /silicon_refunded: silicon/);
+assert.match(forgeExpire, /TreasuryForfeit/);
+assert.match(forgeExpire, /burn_auth_escrow/);
+assert.match(forgeExpire, /transfer_lamports/);
+assert.match(forgeExpire, /if forfeit \{ \(0, 0, 0\) \} else \{ \(paid, circuit, silicon\) \}/);
+assert.match(forgeExpire, /circuit_refunded/);
+assert.match(forgeExpire, /silicon_refunded/);
 assert.doesNotMatch(forgeExpire, /check_supply_cap|token::mint_to|token::burn/);
 assert.ok(coreIdl.instructions.some((ix: any) => ix.name === "forge_attempt_expire"), "forge_attempt_expire missing from committed IDL");
 

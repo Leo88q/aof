@@ -1,0 +1,55 @@
+# Host nginx in front of the loopback API. Not a compose service.
+# The API binds 127.0.0.1:8080. This server listens on port 80 only.
+#
+# TLS ends at Cloudflare (SSL mode Full, not Flexible). Origin firewall must
+# allow only Cloudflare ranges, otherwise the box IP skips the cloud.
+# Install with ops/nginx/install.sh --apply after ops/nginx/refresh-cloudflare-ips.sh
+# has written the real_ip snippet. Do not start this file while server_name is
+# still the example.
+
+server {
+    listen 80;
+    server_name app.example.com;
+    server_tokens off;
+
+    root /srv/aof/frontend/dist;
+    client_max_body_size 32k;
+
+    # One trusted hop after real_ip. The API keeps TRUST_PROXY_HOPS=1.
+    # The included file is produced by refresh-cloudflare-ips.sh; a missing
+    # file makes nginx refuse to start, which is the intended failure.
+    include /etc/nginx/snippets/cloudflare-real-ip.conf;
+    real_ip_header CF-Connecting-IP;
+    real_ip_recursive off;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8080/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        # Replace, do not append. The client-supplied chain is attacker-controlled.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_redirect off;
+        include /etc/nginx/snippets/aof-security-headers.conf;
+        add_header Cache-Control "no-store" always;
+    }
+
+    location /assets/ {
+        include /etc/nginx/snippets/aof-security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location = /index.html {
+        include /etc/nginx/snippets/aof-security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        include /etc/nginx/snippets/aof-security-headers.conf;
+        add_header Cache-Control "no-store" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -16,6 +16,7 @@ import {
   fmtSol, shortAddr, useTreasury, useFlash,
 } from "../../lib/marketUtils";
 import { NoticeMsg } from "../../components/visual/NoticeMsg";
+import { MarketFeeNote } from "../../components/MarketFeeNote";
 
 export function OfferPage() {
   const { language } = useLocale();
@@ -113,6 +114,7 @@ export function OfferPage() {
       <p className="text-straw text-xs">
         {copy.intro}
       </p>
+      <MarketFeeNote />
 
       {txStatus && statusLanguage === language && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}

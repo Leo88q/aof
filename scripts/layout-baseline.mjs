@@ -16,7 +16,8 @@
  * размер fixed-size аккаунтов; исторический порядок ошибок и инструкций; дискриминанты
  * `sha256("global:<name>")[0..8]`. Переименования шага C описаны в `STEP_C_RENAMES`.
  * Допустимые после исторического базиса additions явно перечислены в
- * `docs/LAYOUT_BASELINE.json -> approvedAdditions`: инструкции/аккаунты для player-paid XP
+ * `docs/LAYOUT_BASELINE.json -> approvedAdditions`: новые инструкции/аккаунты.
+ * `approvedRemovals`: исторические инструкции и аккаунты, удалённые намеренно.
  * claims, независимого premium-season ledger и monotonic issuance baselines, plus только
  * appended-варианты AofError. Их точные
  * имена, поля, типы, размер и дискриминант сверяются с исходниками; неперечисленные additions запрещены.
@@ -266,6 +267,31 @@ export function compareLayout(baseline, current) {
     if (!now) { errors.push(`${was.name}: программа исчезла из исходников`); continue; }
 
     const approved = baseline.approvedAdditions?.[was.name] ?? {};
+    const removed = baseline.approvedRemovals?.[was.name] ?? {};
+    const removedInstructions = new Set(Array.isArray(removed.instructions) ? removed.instructions : []);
+    const removedAccounts = new Set(Array.isArray(removed.accounts) ? removed.accounts : []);
+    for (const name of removedInstructions) {
+      if (!was.instructions.some((instruction) => instruction.name === name)) {
+        errors.push(`${was.name}.${name}: approved removal не является исторической инструкцией`);
+      }
+      const renamed = STEP_C_RENAMES.instructions[name] ?? name;
+      if (now.instructions.some((instruction) => instruction.name === renamed)) {
+        errors.push(`${was.name}.${name}: удалённая инструкция вернулась в исходники`);
+      } else {
+        notes.push(`${was.name}.${name}: удалена и явно закреплена`);
+      }
+    }
+    for (const name of removedAccounts) {
+      if (!was.accounts.some((account) => account.name === name)) {
+        errors.push(`${was.name}.${name}: approved removal не является историческим аккаунтом`);
+      }
+      const renamed = STEP_C_RENAMES.accounts[name] ?? name;
+      if (now.accounts.some((account) => account.name === renamed)) {
+        errors.push(`${was.name}.${name}: удалённый аккаунт вернулся в исходники`);
+      } else {
+        notes.push(`${was.name}.${name}: аккаунт удалён и явно закреплён`);
+      }
+    }
     const approvedInstructions = Array.isArray(approved.instructions) ? approved.instructions : [];
     const approvedInstructionNames = new Set();
     for (const addition of approvedInstructions) {
@@ -285,7 +311,7 @@ export function compareLayout(baseline, current) {
         notes.push(`${was.name}.${addition.name}: новая инструкция явно закреплена (${found.discriminator})`);
       }
     }
-    const wasIx = was.instructions.map((i) => i.name);
+    const wasIx = was.instructions.filter((instruction) => !removedInstructions.has(instruction.name)).map((i) => i.name);
     const nowIx = now.instructions.map((i) => i.name);
     if (wasIx.length + approvedInstructionNames.size !== nowIx.length) {
       errors.push(`${was.name}: инструкций ${nowIx.length}, ожидалось ${wasIx.length} исторических + ${approvedInstructionNames.size} approved additions`);
@@ -295,6 +321,7 @@ export function compareLayout(baseline, current) {
       .map((instruction) => REVERSE.instructions[instruction.name] ?? instruction.name);
     if (wasIx.join(',') !== orderedHistoricalNow.join(',')) errors.push(`${was.name}: порядок исторических инструкций изменился или появился неразрешённый instruction`);
     for (const ix of was.instructions) {
+      if (removedInstructions.has(ix.name)) continue;
       const renamed = STEP_C_RENAMES.instructions[ix.name];
       const found = now.instructions.find((x) => x.name === (renamed ?? ix.name));
       if (!found) errors.push(`${was.name}.${ix.name}: инструкция исчезла`);
@@ -353,11 +380,12 @@ export function compareLayout(baseline, current) {
       }
     }
     for (const before of was.accounts) {
+      if (removedAccounts.has(before.name)) continue;
       const expectedName = STEP_C_RENAMES.accounts[before.name] ?? before.name;
       if (!nowAcc.has(expectedName)) errors.push(`${was.name}.${expectedName}: исторический account исчез`);
     }
-    if (now.accounts.length !== was.accounts.length + approvedAccountsByName.size) {
-      errors.push(`${was.name}: аккаунтов ${now.accounts.length}, ожидалось ${was.accounts.length} исторических + ${approvedAccountsByName.size} approved additions`);
+    if (now.accounts.length !== was.accounts.length - removedAccounts.size + approvedAccountsByName.size) {
+      errors.push(`${was.name}: аккаунтов ${now.accounts.length}, ожидалось ${was.accounts.length - removedAccounts.size} исторических + ${approvedAccountsByName.size} approved additions`);
     }
 
     const approvedErrors = approved.errors ?? {};

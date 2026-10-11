@@ -31,6 +31,7 @@ const programDataFor = (programId: PublicKey) =>
   PublicKey.findProgramAddressSync([programId.toBuffer()], BPF_LOADER_UPGRADEABLE_PROGRAM_ID);
 
 export const configPda = () => find([enc("config")]);
+export const laboratoryFinalePda = (user: PublicKey) => find([enc("laboratory_finale"), user.toBuffer()]);
 export const authPda = () => find([enc("auth")]);
 /** Shared escrow ATA for refunded resource costs; AUTH_SEED is its token owner. */
 export const resourceEscrowAta = (mint: PublicKey) =>
@@ -182,9 +183,6 @@ export const challengeRoundPda = (weekNumber: number) =>
   findQuests([enc("challenge_round"), u32le(weekNumber)]);
 export const challengeContributionPda = (user: PublicKey, weekNumber: number) =>
   findQuests([enc("challenge_contrib"), user.toBuffer(), u32le(weekNumber)]);
-export const drumCommitPda = (user: PublicKey) =>
-  findQuests([enc("drum_commit"), user.toBuffer()]);
-
 // ============================================================
 // PDA для программы aof-rebirth
 // ============================================================
