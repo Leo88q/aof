@@ -1,11 +1,19 @@
 /**
- * three.js scene for the organism (phase 1). Placeholder primitives only:
- * no external assets are downloaded. The scene only reads an OrganismState
- * and never writes chain or API state.
+ * three.js scene for the organism. Tool and SoulCore models load from the
+ * same-origin manifest in /assets/models3d (in-repo CC0 placeholders, sha256
+ * pinned in the manifest); primitives stay as fallback until a model arrives
+ * or when loading fails. The scene only reads an OrganismState, reports
+ * pointer picks, and never writes chain or API state.
  */
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DURABILITY_MAX, type OrganismState } from './model';
-import { ORGAN_IDS, type OrganId } from './registry';
+import { ORGAN_IDS, TOOL_DOCKS, type OrganId } from './registry';
+
+export type OrganismPick =
+  | { kind: 'cell'; index: number }
+  | { kind: 'dock'; index: number }
+  | { kind: 'soul' };
 
 const RARITY_COLOR: Record<string, number> = {
   common: 0x8aa0b0,
@@ -33,7 +41,7 @@ export interface OrganismScene {
   dispose(): void;
 }
 
-export function createOrganismScene(container: HTMLElement): OrganismScene {
+export function createOrganismScene(container: HTMLElement, onPick?: (pick: OrganismPick) => void): OrganismScene {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   container.appendChild(renderer.domElement);
@@ -65,6 +73,7 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
     // stay visible through it. An opaque shell hides the fill completely.
     const base = new THREE.MeshStandardMaterial({ color: EMPTY, emissive: 0x0f1a24, emissiveIntensity: 0.6, roughness: 0.6, transparent: true, opacity: 0.38, depthWrite: false });
     const mesh = new THREE.Mesh(cellGeo, base);
+    mesh.userData.pick = { kind: 'cell', index: i } satisfies OrganismPick;
     mesh.position.set(Math.cos(angle) * 1.6, 0.1, Math.sin(angle) * 1.6);
     const fillMat = new THREE.MeshStandardMaterial({ color: GROWING, emissive: GROWING, emissiveIntensity: 0.8 });
     const fill = new THREE.Mesh(fillGeo, fillMat);
@@ -75,16 +84,18 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
   }
   disposables.push(cellGeo, fillGeo);
 
-  // Limbs: five tool docks on the lower arc.
+  // Limbs: five tool docks on the lower arc. GLB models replace the boxes
+  // when the manifest load succeeds; dock order matches TOOL_DOCKS.
   const dockGeo = new THREE.BoxGeometry(0.34, 0.34, 0.34);
-  const docks: Array<{ mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial }> = [];
+  const docks: Array<{ mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; model: THREE.Object3D | null; modelMats: THREE.MeshStandardMaterial[] }> = [];
   for (let i = 0; i < 5; i += 1) {
     const angle = Math.PI * (0.22 + (i / 4) * 0.56);
     const mat = new THREE.MeshStandardMaterial({ color: UNKNOWN, emissive: 0xffffff, emissiveIntensity: 0 });
     const mesh = new THREE.Mesh(dockGeo, mat);
+    mesh.userData.pick = { kind: 'dock', index: i } satisfies OrganismPick;
     mesh.position.set(Math.cos(angle) * 2.6, -1.6 + Math.sin(angle) * 0.2, Math.sin(angle) * 0.9 - 0.4);
     scene.add(mesh);
-    docks.push({ mesh, mat });
+    docks.push({ mesh, mat, model: null, modelMats: [] });
     disposables.push(mat);
   }
   disposables.push(dockGeo);
@@ -116,9 +127,105 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
   // Terminal node: SoulCore, lit only when the balance is known and positive.
   const soulMat = new THREE.MeshStandardMaterial({ color: UNKNOWN, emissive: 0xffd166, emissiveIntensity: 0 });
   const soul = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), soulMat);
+  soul.userData.pick = { kind: 'soul' } satisfies OrganismPick;
   soul.position.set(0, 2.4, 0);
   scene.add(soul);
   disposables.push(soulMat, soul.geometry);
+  let soulModel: THREE.Object3D | null = null;
+  const soulModelMats: THREE.MeshStandardMaterial[] = [];
+
+  // GLB models from the same-origin manifest. Any failure (no network, bad
+  // manifest, WebGL limits) silently keeps the primitive placeholders.
+  let state: OrganismState | null = null;
+  let disposed = false;
+  const tagPick = (root: THREE.Object3D, pick: OrganismPick) => {
+    root.traverse((o) => { o.userData.pick = pick; });
+  };
+  const fitModel = (root: THREE.Object3D, pos: THREE.Vector3, target: number) => {
+    const box3 = new THREE.Box3().setFromObject(root);
+    const size = box3.getSize(new THREE.Vector3());
+    const center = box3.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    root.scale.setScalar(target / maxDim);
+    root.position.copy(pos).sub(center.multiplyScalar(target / maxDim));
+    scene.add(root);
+  };
+  void (async () => {
+    try {
+      const res = await fetch('/assets/models3d/manifest.json');
+      if (!res.ok) return;
+      const manifest = (await res.json()) as {
+        version?: unknown;
+        tools?: Record<string, { model?: unknown }>;
+        soulCore?: { model?: unknown };
+      };
+      if (manifest.version !== 1 || !manifest.tools) return;
+      const loader = new GLTFLoader();
+      const loadAt = async (rel: string, pos: THREE.Vector3, pick: OrganismPick, target: number) => {
+        const gltf = await loader.loadAsync(`/assets/models3d/${rel}`);
+        if (disposed) return null;
+        fitModel(gltf.scene, pos, target);
+        tagPick(gltf.scene, pick);
+        return gltf.scene as THREE.Object3D;
+      };
+      for (let i = 0; i < TOOL_DOCKS.length; i += 1) {
+        const entry = manifest.tools[TOOL_DOCKS[i].toolType];
+        if (!entry || typeof entry.model !== 'string') continue;
+        const model = await loadAt(entry.model, docks[i].mesh.position.clone(), { kind: 'dock', index: i }, 0.72).catch(() => null);
+        if (!model || disposed) continue;
+        docks[i].model = model;
+        model.traverse((o) => {
+          if (o instanceof THREE.Mesh) {
+            const m = (o.material as THREE.MeshStandardMaterial).clone();
+            o.material = m;
+            docks[i].modelMats.push(m);
+            disposables.push(m, o.geometry);
+          }
+        });
+        docks[i].mesh.visible = false;
+        if (state) applyState(state);
+      }
+      if (typeof manifest.soulCore?.model === 'string') {
+        const model = await loadAt(manifest.soulCore.model, soul.position.clone(), { kind: 'soul' }, 0.6).catch(() => null);
+        if (model && !disposed) {
+          soulModel = model;
+          model.traverse((o) => {
+            if (o instanceof THREE.Mesh) {
+              const m = (o.material as THREE.MeshStandardMaterial).clone();
+              o.material = m;
+              soulModelMats.push(m);
+              disposables.push(m, o.geometry);
+            }
+          });
+          soul.visible = false;
+          if (state) applyState(state);
+        }
+      }
+    } catch {
+      // Placeholders remain; the text list carries the same data.
+    }
+  })();
+
+  // Pointer picking: report the pick, the view decides what it means.
+  const raycaster = new THREE.Raycaster();
+  const onPointerDown = (ev: PointerEvent) => {
+    if (!onPick) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(
+      ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+      -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+    );
+    raycaster.setFromCamera(ndc, camera);
+    const targets: THREE.Object3D[] = [
+      ...cells.map((c) => c.mesh as THREE.Object3D),
+      ...docks.map((d) => (d.model ?? d.mesh) as THREE.Object3D),
+      (soulModel ?? soul) as THREE.Object3D,
+    ];
+    const hit = raycaster.intersectObjects(targets, true)[0];
+    const pick = hit?.object.userData.pick as OrganismPick | undefined;
+    if (pick) onPick(pick);
+  };
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
   // Links from the heart to each organ.
   const linkMat = new THREE.LineBasicMaterial({ color: 0x6fd7a4, transparent: true, opacity: 0.18 });
@@ -129,7 +236,6 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
     disposables.push(geo);
   }
 
-  let state: OrganismState | null = null;
   let frame = 0;
   const clock = new THREE.Clock();
 
@@ -173,6 +279,16 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
         slot.mat.color.setHex(RARITY_COLOR[dock.bestRarity ?? 'common'] ?? RARITY_COLOR.common);
       }
       slot.mat.userData.working = dock.working;
+      // GLB model tint: rarity sets the emissive; unknown stays unlit.
+      const tint = dock.owned === null || dock.owned === 0
+        ? null
+        : (RARITY_COLOR[dock.bestRarity ?? 'common'] ?? RARITY_COLOR.common);
+      for (const m of slot.modelMats) {
+        if (tint === null) m.emissive.setHex(0x000000);
+        else m.emissive.setHex(tint);
+        m.userData.working = dock.working;
+      }
+      if (slot.model) slot.model.visible = dock.owned !== null;
     });
     const byId = new Map(s.organs.flatMap((o) => o.resources.map((r) => [r.id, r] as const)));
     const resourcesByOrgan = new Map<OrganId, string[]>();
@@ -237,13 +353,24 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
       const working = Number(dock.mat.userData.working ?? 0) > 0;
       dock.mat.emissiveIntensity = working ? 0.35 + 0.25 * Math.sin(t * 4) : 0;
       dock.mesh.rotation.y = working ? t * 1.2 : 0;
+      if (dock.model) dock.model.rotation.y = working ? t * 1.2 : 0;
+      for (const m of dock.modelMats) {
+        m.emissiveIntensity = Number(m.userData.working ?? 0) > 0 ? 0.35 + 0.25 * Math.sin(t * 4) : 0.12;
+      }
     }
     for (const node of organNodes) {
       const intensity = Number(node.mat.userData.intensity ?? 0);
       node.mat.emissiveIntensity = 0.1 + intensity * 0.5;
     }
-    soulMat.emissiveIntensity = soulMat.userData.lit ? 0.6 + 0.4 * Math.sin(t * 1.5) : 0;
+    soulMat.emissiveIntensity = soulMat.userData.lit
+      ? 0.6 + 0.4 * Math.sin(t * 1.5)
+      : 0.3 * Number(soulMat.userData.assemblyShare ?? 0);
     soul.rotation.y = t * 0.6;
+    if (soulModel) {
+      soulModel.rotation.y = t * 0.6;
+      soulModel.scale.setScalar(0.75 + 0.5 * Number(soulMat.userData.assemblyShare ?? 0));
+      for (const m of soulModelMats) m.emissiveIntensity = soulMat.emissiveIntensity;
+    }
     renderer.render(scene, camera);
   }
   frame = requestAnimationFrame(tick);
@@ -254,6 +381,8 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
       applyState(next);
     },
     dispose() {
+      disposed = true;
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       cancelAnimationFrame(frame);
       observer?.disconnect();
       for (const d of disposables) d.dispose();

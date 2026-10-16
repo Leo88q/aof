@@ -145,6 +145,39 @@ test('dock durability: lowest readable value wins, unknown stays null, out-of-ra
   assert.ok(unknown.docks.every((d) => d.minDurability === null));
 });
 
+test('eta: cell countdown from readyAt and earliest mining end per dock', () => {
+  const tiles = [{ index: 0, active: true, ready: false, startedAt: NOW - 300, readyAt: NOW + 300, progress: 50 }];
+  const tools = [
+    { toolType: 'neural_seeder', rarity: 'common', isMining: true, miningEnd: NOW + 900 },
+    { toolType: 'neural_seeder', rarity: 'rare', isMining: true, miningEnd: NOW + 120 },
+    { toolType: 'plasma_cutter', rarity: 'common', isMining: false, miningEnd: NOW + 30 },
+  ];
+  const s = deriveOrganism({ ...emptyInput(), tiles, tools }, NOW);
+  assert.equal(s.cells[0].etaSec, 300);
+  assert.equal(s.cells[1].etaSec, null);
+  assert.equal(s.docks.find((d) => d.toolType === 'neural_seeder')?.miningEtaSec, 120);
+  assert.equal(s.docks.find((d) => d.toolType === 'plasma_cutter')?.miningEtaSec, null);
+});
+
+test('3d manifest: five tool models and soul core exist with matching sha256', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { createHash } = await import('node:crypto');
+  const root = new URL('../public/assets/models3d/', import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL('manifest.json', root), 'utf8'));
+  assert.equal(manifest.version, 1);
+  const ids = ['plasma_cutter', 'silicon_extractor', 'data_harvester', 'quantum_transmitter', 'neural_seeder'];
+  for (const id of ids) {
+    const entry = manifest.tools[id];
+    assert.ok(entry, `missing ${id}`);
+    const bytes = await readFile(new URL(entry.model, root));
+    assert.equal(bytes.subarray(0, 4).toString(), 'glTF');
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), entry.sha256);
+  }
+  const soul = await readFile(new URL(manifest.soulCore.model, root));
+  assert.equal(soul.subarray(0, 4).toString(), 'glTF');
+  assert.equal(createHash('sha256').update(soul).digest('hex'), manifest.soulCore.sha256);
+});
+
 test('soul assembly: seven seal components at 1 each, seals pass through, unknown stays unknown', () => {
   const balances: Record<string, number> = {};
   for (const r of RESOURCES) balances[resourceKey(r.id)] = 0;

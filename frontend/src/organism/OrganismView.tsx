@@ -12,7 +12,7 @@ import { organismCopy } from '../i18n/organismCopy';
 import { homeResourceNames, type ResourceId } from '../i18n/homeDetail';
 import { deriveOrganism, toNumber, DURABILITY_MAX, type OrganismInput } from './model';
 import { ORGANS, ORGAN_IDS, type OrganId } from './registry';
-import { createOrganismScene, type OrganismScene } from './scene';
+import { createOrganismScene, type OrganismPick, type OrganismScene } from './scene';
 
 const POLL_MS = 10_000;
 const CLOCK_MS = 1_000;
@@ -28,6 +28,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY_SNAPSHOT);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [webgl, setWebgl] = useState(true);
+  const [pick, setPick] = useState<OrganismPick | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<OrganismScene | null>(null);
 
@@ -86,7 +87,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
     const container = containerRef.current;
     if (!container) return;
     try {
-      sceneRef.current = createOrganismScene(container);
+      sceneRef.current = createOrganismScene(container, setPick);
     } catch {
       setWebgl(false);
       sceneRef.current = null;
@@ -124,6 +125,19 @@ export default function OrganismView({ owner }: { owner: string | null }) {
         <div ref={containerRef} className="organism-canvas" style={{ width: '100%', height: 360 }} />
       ) : (
         <p role="status">{copy.webglMissing}</p>
+      )}
+      {pick && (
+        <p className="organism-detail" role="status">
+          {pick.kind === 'cell' && (() => {
+            const c = state.cells[pick.index];
+            return `${copy.body} #${pick.index + 1}: ${copy.cell[c.state]}${c.state === 'growing' ? ` ${Math.round(c.progress * 100)}%` : ''}${c.etaSec !== null && c.state === 'growing' ? ` · ${copy.eta} ${c.etaSec}s` : ''}`;
+          })()}
+          {pick.kind === 'dock' && (() => {
+            const d = state.docks[pick.index];
+            return `${d.toolType}: ${d.owned === null ? copy.dock.unknownTools : `${copy.dock.owned} ${d.owned}, ${copy.dock.working} ${d.working}`}${d.bestRarity ? ` (${d.bestRarity})` : ''}${d.minDurability !== null ? ` · ${copy.dock.durability} ${d.minDurability}/${DURABILITY_MAX}` : ''}${d.miningEtaSec !== null ? ` · ${copy.eta} ${d.miningEtaSec}s` : ''}`;
+          })()}
+          {pick.kind === 'soul' && `${copy.soulCore}: ${amountText(state.soulCore.amount)} · ${copy.assembly} ${state.soulCore.assemblyReady}/${state.soulCore.assemblyTotal}${state.soulCore.seals !== null ? ` · ${copy.seals}: ${state.soulCore.seals}` : ''}`}
+        </p>
       )}
       <div className="organism-lists">
         <h3>{copy.heart}</h3>

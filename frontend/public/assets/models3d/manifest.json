@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "license": "CC0 placeholders generated in-repo by scripts/models3d_generate.py",
+  "tools": {
+    "plasma_cutter": {
+      "model": "tools/plasma_cutter.glb",
+      "sha256": "83912292224a986d7f532d5458f063511d3a1b82c46308dcbd6b3ffa59a9de5c"
+    },
+    "silicon_extractor": {
+      "model": "tools/silicon_extractor.glb",
+      "sha256": "82322967f494f0af5357c8f9e07da0e38aae99f21526ead370ee0a5bb3c05a75"
+    },
+    "data_harvester": {
+      "model": "tools/data_harvester.glb",
+      "sha256": "b43381f437eab4e6efc0dfdffceae95365455f59c37a52d3f457aa1d112a1aff"
+    },
+    "quantum_transmitter": {
+      "model": "tools/quantum_transmitter.glb",
+      "sha256": "726fdee064a69fe42a87da2419d5a2103c45c3f871b825f6a04a29eb81082929"
+    },
+    "neural_seeder": {
+      "model": "tools/neural_seeder.glb",
+      "sha256": "8092c55f0026223dfab62fb0b163db934d678219be1e2ad7d01dc190248d4c9c"
+    }
+  },
+  "soulCore": {
+    "model": "soul_core.glb",
+    "sha256": "a2727cc236e441d5daa4666971d4f1ded987d40f62d650951f803aea10083538"
+  }
+}

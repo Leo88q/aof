@@ -19,6 +19,7 @@ export type OrganismCopy = {
   dock: { owned: string; working: string; none: string; unknownTools: string; durability: string };
   assembly: string;
   seals: string;
+  eta: string;
   organNames: Record<'base' | 'model' | 'cores' | 'quartz' | 'bits' | 'fluids' | 'special', string>;
 };
 
@@ -42,6 +43,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'owned', working: 'working', none: 'none', unknownTools: 'unknown', durability: 'durability (lowest)' },
     assembly: 'Seal assembly',
     seals: 'seals completed',
+    eta: 'ready in',
     organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits and chips', fluids: 'Fluids', special: 'Special' },
   },
   ru: {
@@ -63,6 +65,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'есть', working: 'в работе', none: 'нет', unknownTools: 'неизвестно', durability: 'прочность (низшая)' },
     assembly: 'Сборка печати',
     seals: 'печатей завершено',
+    eta: 'готово через',
     organNames: { base: 'База', model: 'Цепочка модели', cores: 'Ядра', quartz: 'Кварцы', bits: 'Биты и чипы', fluids: 'Флюиды', special: 'Особое' },
   },
   pt: {
@@ -84,6 +87,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'possui', working: 'em uso', none: 'nenhuma', unknownTools: 'desconhecido', durability: 'durabilidade (menor)' },
     assembly: 'Montagem do selo',
     seals: 'selos concluídos',
+    eta: 'pronto em',
     organNames: { base: 'Base', model: 'Cadeia do modelo', cores: 'Núcleos', quartz: 'Quartzos', bits: 'Bits e chips', fluids: 'Fluidos', special: 'Especial' },
   },
   es: {
@@ -105,6 +109,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'tienes', working: 'en uso', none: 'ninguna', unknownTools: 'desconocido', durability: 'durabilidad (menor)' },
     assembly: 'Ensamblaje del sello',
     seals: 'sellos completados',
+    eta: 'listo en',
     organNames: { base: 'Base', model: 'Cadena del modelo', cores: 'Núcleos', quartz: 'Cuarzos', bits: 'Bits y chips', fluids: 'Fluidos', special: 'Especial' },
   },
   vi: {
@@ -126,6 +131,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'có', working: 'đang chạy', none: 'không có', unknownTools: 'chưa rõ', durability: 'độ bền (thấp nhất)' },
     assembly: 'Lắp ráp con dấu',
     seals: 'con dấu đã hoàn thành',
+    eta: 'sẵn sàng sau',
     organNames: { base: 'Nền tảng', model: 'Chuỗi mô hình', cores: 'Lõi', quartz: 'Thạch anh', bits: 'Bit và chip', fluids: 'Chất lỏng', special: 'Đặc biệt' },
   },
   id: {
@@ -147,6 +153,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'dimiliki', working: 'bekerja', none: 'tidak ada', unknownTools: 'tidak diketahui', durability: 'daya tahan (terendah)' },
     assembly: 'Perakitan segel',
     seals: 'segel selesai',
+    eta: 'siap dalam',
     organNames: { base: 'Dasar', model: 'Rantai model', cores: 'Inti', quartz: 'Kuarsa', bits: 'Bit dan chip', fluids: 'Cairan', special: 'Khusus' },
   },
   fil: {
@@ -168,6 +175,7 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     dock: { owned: 'meron', working: 'gumagana', none: 'wala', unknownTools: 'hindi alam', durability: 'tibay (pinakamababa)' },
     assembly: 'Pagbuo ng selyo',
     seals: 'mga selyong tapos na',
+    eta: 'handa sa',
     organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits at chips', fluids: 'Fluids', special: 'Espesyal' },
   },
 };
