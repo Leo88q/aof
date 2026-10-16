@@ -8,8 +8,8 @@
 Пересобрать явно: `node scripts/client-inventory.mjs --write`; проверить: `--check`.
 `--check` ничего не переписывает; после `--write` baseline нужно отдельно просмотреть и закоммитить.
 
-Файлов: 693 (frontend: 617, game: 76).
-sha256: 5f8381743aea0cca78624eb25c0a2ae3b9fc0253b6b7f0b785b43c7bf1b55cee
+Файлов: 700 (frontend: 624, game: 76).
+sha256: 37280b7fd286ddf659e4350a50b717ad1e8fa6881bf1f3d352fc78295f2d0872
 
 ```
 frontend/.env.example
@@ -177,6 +177,13 @@ frontend/public/assets/lottery/drum.jpg
 frontend/public/assets/lottery/potato.jpg
 frontend/public/assets/lottery/skr.jpg
 frontend/public/assets/lottery/sol.jpg
+frontend/public/assets/models3d/manifest.json
+frontend/public/assets/models3d/soul_core.glb
+frontend/public/assets/models3d/tools/data_harvester.glb
+frontend/public/assets/models3d/tools/neural_seeder.glb
+frontend/public/assets/models3d/tools/plasma_cutter.glb
+frontend/public/assets/models3d/tools/quantum_transmitter.glb
+frontend/public/assets/models3d/tools/silicon_extractor.glb
 frontend/public/assets/nfts/data-harvester-epic.jpg
 frontend/public/assets/nfts/data-harvester-epic.png
 frontend/public/assets/nfts/data-harvester-legendary.jpg
