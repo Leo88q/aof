@@ -661,6 +661,11 @@
         "role": "gameplay",
         "status": "active",
         "note": "Вывод остатка газ-бака игроком."
+      },
+      "unlock_soul_access": {
+        "role": "gameplay",
+        "status": "active",
+        "note": "SoulCore gameplay gate: opens SoulAccess after at least one completed laboratory seal; moves no resources."
       }
     },
     "aof_market": {

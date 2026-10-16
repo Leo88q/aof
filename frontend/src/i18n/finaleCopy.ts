@@ -5,6 +5,7 @@ type Copy = {
   sealed: string; connect: string; unavailable: string; missingRegistry: string;
   programOld: string; workshop: string; lab: string;
   sealsNone: string; sealsHeld: (count: number) => string; sealsUnread: string;
+  unlock: string; unlocking: string; unlocked: string; accessOpen: string; accessLocked: string;
 };
 
 export const finaleCopy: Record<Language, Copy> = {
@@ -25,6 +26,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Печатей ещё нет. Ядро души выпускается первой печатью и остаётся у вас.',
     sealsHeld: (count) => `Печатей лаборатории: {count}. Ядро души не сжигается.`.replace('{count}', String(count)),
     sealsUnread: 'Счётчик печатей не прочитан из сети. Это не ноль.',
+    unlock: 'Открыть доступ ядра души', unlocking: 'Открываем доступ…', unlocked: 'Доступ открыт', accessOpen: 'Доступ ядра души открыт на чейне.', accessLocked: 'Доступ откроется после первой печати лаборатории.',
   },
   en: {
     intro: 'The end is not endless mining. The laboratory becomes conscious when it holds a trained model, the five fluids and the amber vessel.',
@@ -43,6 +45,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'No seals yet. The first seal mints a soul core, and it stays with you.',
     sealsHeld: (count) => `Laboratory seals: {count}. The soul core is not burned.`.replace('{count}', String(count)),
     sealsUnread: 'The seal count was not read from the network. That is not zero.',
+    unlock: 'Open Soul Core access', unlocking: 'Opening access…', unlocked: 'Access opened', accessOpen: 'Soul Core access is open on-chain.', accessLocked: 'Access opens after the first laboratory seal.',
   },
   pt: {
     intro: 'O fim não é minerar sem parar. O laboratório fica consciente quando recebe um modelo treinado, os cinco fluidos e o recipiente de âmbar.',
@@ -61,6 +64,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Ainda não há selos. O primeiro selo emite um núcleo da alma, e ele fica com você.',
     sealsHeld: (count) => `Selos do laboratório: {count}. O núcleo da alma não é queimado.`.replace('{count}', String(count)),
     sealsUnread: 'A contagem de selos não foi lida na rede. Isso não é zero.',
+    unlock: 'Abrir acesso ao núcleo da alma', unlocking: 'Abrindo acesso…', unlocked: 'Acesso aberto', accessOpen: 'O acesso ao núcleo da alma está aberto na cadeia.', accessLocked: 'O acesso abre após o primeiro selo do laboratório.',
   },
   es: {
     intro: 'El final no es minar sin fin. El laboratorio se vuelve consciente cuando recibe un modelo entrenado, los cinco fluidos y el recipiente de ámbar.',
@@ -79,6 +83,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Aún no hay sellos. El primer sello emite un núcleo del alma, y se queda contigo.',
     sealsHeld: (count) => `Sellos del laboratorio: {count}. El núcleo del alma no se quema.`.replace('{count}', String(count)),
     sealsUnread: 'No se leyó el número de sellos en la red. Eso no es cero.',
+    unlock: 'Abrir acceso al núcleo del alma', unlocking: 'Abriendo acceso…', unlocked: 'Acceso abierto', accessOpen: 'El acceso al núcleo del alma está abierto en la cadena.', accessLocked: 'El acceso se abre tras el primer sello del laboratorio.',
   },
   vi: {
     intro: 'Đích đến không phải là khai thác mãi. Phòng thí nghiệm trở nên có ý thức khi có mô hình đã huấn luyện, năm dung dịch và bình hổ phách.',
@@ -97,6 +102,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Chưa có lần niêm nào. Lần đầu tạo một lõi linh hồn, và lõi ở lại với bạn.',
     sealsHeld: (count) => `Số lần niêm phòng thí nghiệm: {count}. Lõi linh hồn không bị đốt.`.replace('{count}', String(count)),
     sealsUnread: 'Chưa đọc được số lần niêm từ mạng. Đó không phải là số không.',
+    unlock: 'Mở quyền truy cập lõi linh hồn', unlocking: 'Đang mở quyền truy cập…', unlocked: 'Đã mở quyền truy cập', accessOpen: 'Quyền truy cập lõi linh hồn đã mở trên chuỗi.', accessLocked: 'Quyền truy cập mở sau con dấu phòng thí nghiệm đầu tiên.',
   },
   id: {
     intro: 'Tujuan akhirnya bukan menambang tanpa henti. Laboratorium menjadi sadar saat memegang model terlatih, lima cairan, dan wadah amber.',
@@ -115,6 +121,7 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Belum ada segel. Segel pertama mencetak inti jiwa, dan inti itu tetap padamu.',
     sealsHeld: (count) => `Segel laboratorium: {count}. Inti jiwa tidak dibakar.`.replace('{count}', String(count)),
     sealsUnread: 'Jumlah segel tidak terbaca dari jaringan. Itu bukan nol.',
+    unlock: 'Buka akses inti jiwa', unlocking: 'Membuka akses…', unlocked: 'Akses dibuka', accessOpen: 'Akses inti jiwa terbuka di rantai.', accessLocked: 'Akses terbuka setelah segel laboratorium pertama.',
   },
   fil: {
     intro: 'Ang wakas ay hindi walang-hanggang pagmimina. Nagiging mulat ang laboratoryo kapag hawak nito ang isang sanay na modelo, ang limang fluid, at ang sisidlang amber.',
@@ -133,5 +140,6 @@ export const finaleCopy: Record<Language, Copy> = {
     sealsNone: 'Wala pang tatak. Ang unang tatak ay lumilikha ng soul core, at ito ay nananatili sa iyo.',
     sealsHeld: (count) => `Mga tatak ng laboratoryo: {count}. Hindi sinusunog ang soul core.`.replace('{count}', String(count)),
     sealsUnread: 'Hindi nabasa sa network ang bilang ng tatak. Hindi iyon sero.',
+    unlock: 'Buksan ang access sa Soul Core', unlocking: 'Binubuksan ang access…', unlocked: 'Nabuksan ang access', accessOpen: 'Bukas sa chain ang access sa Soul Core.', accessLocked: 'Magbubukas ang access pagkatapos ng unang laboratory seal.',
   },
 };

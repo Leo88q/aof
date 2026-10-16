@@ -142,6 +142,13 @@ pub struct MiningCollected {
     pub durability_after: u8,
 }
 
+#[event]
+pub struct SoulAccessUnlocked {
+    pub user: Pubkey,
+    pub seals_at_unlock: u32,
+    pub unlocked_at: i64,
+}
+
 // ===== [НОВОЕ] для добавленной логики =====
 
 #[event]

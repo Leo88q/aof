@@ -40,17 +40,21 @@ export default function OrganismView({ owner }: { owner: string | null }) {
     }
     let alive = true;
     const load = async () => {
-      const [b, t, m, e, f] = await Promise.allSettled([
+      const [b, t, m, e, f, a] = await Promise.allSettled([
         api.query.balances(owner),
         api.query.labTiles(owner),
         api.query.myTools(owner),
         api.energy.balance(owner),
         api.query.laboratoryFinale(owner),
+        api.query.soulAccess(owner),
       ]);
       if (!alive) return;
       const balances = b.status === 'fulfilled' ? readEconomyBalances(b.value) : null;
       const seals = f.status === 'fulfilled' && f.value && typeof f.value === 'object'
         ? (f.value as { seals?: unknown }).seals
+        : null;
+      const access = a.status === 'fulfilled' && a.value && typeof a.value === 'object'
+        ? ((a.value as { unlocked?: unknown }).unlocked === true)
         : null;
       const tiles = t.status === 'fulfilled' && Array.isArray((t.value as { tiles?: unknown })?.tiles)
         ? ((t.value as { tiles: unknown[] }).tiles)
@@ -62,7 +66,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
       // Convert the browser clock into chain time using the server's serverNow.
       const serverNow = t.status === 'fulfilled' ? toNumber((t.value as { serverNow?: unknown })?.serverNow) : null;
       const clockOffsetSec = serverNow !== null ? serverNow - Date.now() / 1000 : 0;
-      setSnapshot({ balances, tiles, tools, energy, seals, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
+      setSnapshot({ balances, tiles, tools, energy, seals, access, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
     };
     load();
     const id = window.setInterval(load, POLL_MS);
@@ -189,6 +193,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
           {copy.assembly}: {state.soulCore.assemblyReady} / {state.soulCore.assemblyTotal}
           {state.soulCore.seals !== null ? ` · ${copy.seals}: ${state.soulCore.seals}` : ''}
         </p>
+        <p>{copy.access[state.soulCore.access]}</p>
         <ul>
           {state.soulCore.assembly.map((a) => (
             <li key={a.id}>{resourceName(a.id)}: {amountText(a.amount)} / 1</li>

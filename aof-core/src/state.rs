@@ -774,6 +774,18 @@ pub struct LaboratoryFinale {
     pub bump: u8,
 }
 
+/// SoulCore gameplay access. Created only by `unlock_soul_access` after at
+/// least one completed laboratory seal; the account itself is the on-chain
+/// proof other instructions and clients check. No value moves here.
+#[account]
+#[derive(InitSpace)]
+pub struct SoulAccess {
+    pub owner: Pubkey,
+    pub unlocked_at: i64,
+    pub seals_at_unlock: u32,
+    pub bump: u8,
+}
+
 // =====================================================================
 // [БЛОК L] Хлебная экономика: новые аккаунты
 // =====================================================================

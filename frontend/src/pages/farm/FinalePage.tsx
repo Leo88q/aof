@@ -38,6 +38,7 @@ export function FinalePage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [seals, setSeals] = useState<{ status: "loading" | "unread" | "ready"; count: number | null }>({ status: "loading", count: null });
+  const [access, setAccess] = useState<{ status: "loading" | "unread" | "ready"; unlocked: boolean }>({ status: "loading", unlocked: false });
   const running = useRef(false);
 
   useEffect(() => {
@@ -57,6 +58,45 @@ export function FinalePage() {
     });
     return () => { cancelled = true; };
   }, [address, refreshKey]);
+
+  useEffect(() => {
+    if (!address) {
+      setAccess({ status: "unread", unlocked: false });
+      return;
+    }
+    let cancelled = false;
+    setAccess({ status: "loading", unlocked: false });
+    api.query.soulAccess(address).then((read) => {
+      if (cancelled) return;
+      if (read && typeof read.unlocked === "boolean") setAccess({ status: "ready", unlocked: read.unlocked });
+      else setAccess({ status: "unread", unlocked: false });
+    }).catch(() => {
+      if (!cancelled) setAccess({ status: "unread", unlocked: false });
+    });
+    return () => { cancelled = true; };
+  }, [address, refreshKey]);
+
+  async function unlock() {
+    if (running.current || !address) return;
+    running.current = true;
+    setBusy(true);
+    try {
+      setMessage(copy.unlocking);
+      const response = await api.chain.unlockSoulAccess({ user: address });
+      if (!response?.tx) { setMessage(copy.unavailable); return; }
+      const result = await handleTxResponse(response);
+      if (result.success) {
+        setMessage(copy.unlocked);
+        setRefreshKey(n => n + 1);
+      } else setMessage(result.error || walletRuntimeCopy[language].unconfirmedResponse);
+    } catch (error) {
+      const code = (error as { code?: unknown } | null)?.code;
+      setMessage(code === "SOUL_ACCESS_NOT_ON_THIS_PROGRAM" ? copy.programOld : actionErrorFeedback(error, language, walletRuntimeCopy[language].unconfirmedResponse));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }
 
   const [clocks, setClocks] = useState({ energy: "", signal: "", model: "", soul: "" });
   useEffect(() => {
@@ -156,6 +196,7 @@ export function FinalePage() {
       <p className="text-parchment text-xs break-words">{clocks.model}</p>
       <p className="text-parchment text-xs break-words">{clocks.soul}</p>
       {address && seals.status !== "loading" && <p className="text-parchment text-xs">{seals.status === "unread" || seals.count === null ? copy.sealsUnread : seals.count === 0 ? copy.sealsNone : copy.sealsHeld(seals.count)}</p>}
+      {address && access.status === "ready" && <p className="text-parchment text-xs">{access.unlocked ? copy.accessOpen : copy.accessLocked}</p>}
       <p className="text-straw text-xs">{copy.chain}</p>
       <div className="text-xs text-parchment space-y-1">
         <p>{copy.need}</p>
@@ -164,6 +205,9 @@ export function FinalePage() {
       </div>
       {message && <NoticeMsg text={message} />}
       <button type="button" className="btn btn-primary" disabled={!address || busy} onClick={seal}>{copy.seal}</button>
+      {address && access.status === "ready" && !access.unlocked && seals.count !== null && seals.count >= 1 && (
+        <button type="button" className="btn" disabled={busy} onClick={unlock}>{copy.unlock}</button>
+      )}
       <button type="button" className="btn" onClick={() => push("economy", "workshop", (<><NavHeader headerId="finale" tabKey="economy" /><Workshop /></>))}>{copy.workshop}</button>
     </div>
   );

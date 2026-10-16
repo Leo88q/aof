@@ -178,6 +178,13 @@ test('3d manifest: five tool models and soul core exist with matching sha256', a
   assert.equal(createHash('sha256').update(soul).digest('hex'), manifest.soulCore.sha256);
 });
 
+test('soul access gate: open when unlocked on-chain, eligible after first seal, locked before, unknown without reads', () => {
+  assert.equal(deriveOrganism({ ...emptyInput(), seals: 0, access: false }, NOW).soulCore.access, 'locked');
+  assert.equal(deriveOrganism({ ...emptyInput(), seals: 1, access: false }, NOW).soulCore.access, 'eligible');
+  assert.equal(deriveOrganism({ ...emptyInput(), seals: 3, access: true }, NOW).soulCore.access, 'open');
+  assert.equal(deriveOrganism(emptyInput(), NOW).soulCore.access, 'unknown');
+});
+
 test('soul assembly: seven seal components at 1 each, seals pass through, unknown stays unknown', () => {
   const balances: Record<string, number> = {};
   for (const r of RESOURCES) balances[resourceKey(r.id)] = 0;

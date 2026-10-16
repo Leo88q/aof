@@ -18,6 +18,7 @@ import {
   gridStatePda,
   issuanceCapPda,
   laboratoryFinalePda,
+  soulAccessPda,
 } from "../lib/pda";
 import { PROGRAM_ID } from "../config";
 import { coSign, pk } from "../lib/tx";
@@ -448,6 +449,34 @@ r.post("/finale/seal", async (req, res) => {
     // The previous build has no seal_laboratory. Anchor reports that as fallback 101.
     if (/Fallback|InstructionFallbackNotFound|IncorrectProgramId|InvalidInstructionData|invalid instruction data|"Custom":101/i.test(message)) {
       return res.status(503).json({ error: "SEAL_NOT_ON_THIS_PROGRAM" });
+    }
+    res.status(400).json({ error: message });
+  }
+});
+
+// Open the SoulCore gate. Built from the source discriminator, like the seal:
+// a program without unlock_soul_access rejects it and we report that honestly.
+r.post("/finale/unlock-soul-access", async (req, res) => {
+  try {
+    const user = pk(req.body.user);
+    const meta = (pubkey: PublicKey, isWritable: boolean, isSigner = false) => ({ pubkey, isSigner, isWritable });
+    const ix = new TransactionInstruction({
+      programId: PROGRAM_ID,
+      data: createHash("sha256").update("global:unlock_soul_access").digest().subarray(0, 8),
+      keys: [
+        meta(configPda()[0], false),
+        meta(user, true, true),
+        meta(laboratoryFinalePda(user)[0], false),
+        meta(soulAccessPda(user)[0], true),
+        meta(SystemProgram.programId, false),
+      ],
+    });
+    const tx = await coSign([ix], user);
+    res.json({ tx });
+  } catch (e: any) {
+    const message = String(e?.message || e);
+    if (/Fallback|InstructionFallbackNotFound|IncorrectProgramId|InvalidInstructionData|invalid instruction data|"Custom":101/i.test(message)) {
+      return res.status(503).json({ error: "SOUL_ACCESS_NOT_ON_THIS_PROGRAM" });
     }
     res.status(400).json({ error: message });
   }

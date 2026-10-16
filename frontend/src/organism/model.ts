@@ -20,7 +20,11 @@ export interface OrganismInput {
   energy: { amount?: unknown; cap?: unknown } | null;
   /** Completed laboratory seals from /query/laboratory-finale, or null if unavailable. */
   seals?: unknown;
+  /** SoulAccess.unlocked from /query/soul-access (boolean), or null if unavailable. */
+  access?: unknown;
 }
+
+export type SoulAccessState = 'open' | 'eligible' | 'locked' | 'unknown';
 
 export interface CellView {
   index: number;
@@ -96,6 +100,8 @@ export interface OrganismState {
     assemblyTotal: number;
     /** Completed seals when the finale account was readable, else null. */
     seals: number | null;
+    /** On-chain SoulCore gate: open, eligible (sealed, not yet unlocked), locked, or unknown. */
+    access: SoulAccessState;
   };
 }
 
@@ -251,6 +257,11 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   });
   const sealsRaw = toNumber(input.seals);
   const seals = sealsRaw !== null && sealsRaw >= 0 ? Math.floor(sealsRaw) : null;
+  const access: SoulAccessState = input.access === true
+    ? 'open'
+    : seals !== null
+      ? (seals >= 1 ? 'eligible' : 'locked')
+      : 'unknown';
   return {
     heart,
     cells,
@@ -263,6 +274,7 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
       assemblyReady: assembly.filter((a) => a.ready).length,
       assemblyTotal: assembly.length,
       seals,
+      access,
     },
   };
 }

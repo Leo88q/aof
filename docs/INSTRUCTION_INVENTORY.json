@@ -25,9 +25,9 @@
     }
   ],
   "totals": {
-    "instructions": 175,
+    "instructions": 176,
     "byRole": {
-      "gameplay": 107,
+      "gameplay": 108,
       "admin": 40,
       "emergency": 7,
       "migration": 1,
@@ -39,14 +39,14 @@
     "disabledOnChain": 3,
     "validatorTested": 101,
     "sharedNames": 19,
-    "withoutAnyCallSite": 20,
-    "withoutCallSiteAndTest": 3
+    "withoutAnyCallSite": 21,
+    "withoutCallSiteAndTest": 4
   },
   "programs": {
     "aof_core": {
-      "instructions": 129,
+      "instructions": 130,
       "byRole": {
-        "gameplay": 85,
+        "gameplay": 86,
         "admin": 23,
         "emergency": 6,
         "migration": 1,
@@ -58,8 +58,8 @@
       "disabledOnChain": 1,
       "validatorTested": 95,
       "sharedNames": 5,
-      "withoutAnyCallSite": 13,
-      "withoutCallSiteAndTest": 1
+      "withoutAnyCallSite": 14,
+      "withoutCallSiteAndTest": 2
     },
     "aof_market": {
       "instructions": 12,
@@ -7507,6 +7507,34 @@
       }
     },
     {
+      "program": "aof_core",
+      "name": "unlock_soul_access",
+      "camel": "unlockSoulAccess",
+      "inIdl": true,
+      "sharedName": false,
+      "handler": {
+        "kind": "delegate",
+        "path": "instructions::soul_access::handler",
+        "file": "aof-core/src/instructions/soul_access.rs",
+        "line": 10
+      },
+      "disabledOnChain": false,
+      "role": "gameplay",
+      "status": "active",
+      "replacedBy": null,
+      "note": "SoulCore gameplay gate: opens SoulAccess after at least one completed laboratory seal; moves no resources.",
+      "evidence": null,
+      "callSites": {},
+      "registries": [],
+      "bringup": [],
+      "tests": {},
+      "summary": {
+        "callSiteCount": 0,
+        "validatorTested": false,
+        "anyTest": false
+      }
+    },
+    {
       "program": "aof_market",
       "name": "crank_market",
       "camel": "crankMarket",
@@ -9011,7 +9039,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 233
+        "line": 232
       },
       "disabledOnChain": false,
       "role": "initialization",
@@ -9067,7 +9095,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 321
+        "line": 320
       },
       "disabledOnChain": true,
       "role": "gameplay",
@@ -9110,7 +9138,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 263
+        "line": 262
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9146,7 +9174,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 298
+        "line": 297
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9182,7 +9210,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 288
+        "line": 287
       },
       "disabledOnChain": false,
       "role": "gameplay",
@@ -9218,7 +9246,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 248
+        "line": 247
       },
       "disabledOnChain": false,
       "role": "admin",
@@ -9254,7 +9282,7 @@
         "kind": "inline",
         "path": null,
         "file": "programs/aof-session-keys/src/lib.rs",
-        "line": 312
+        "line": 311
       },
       "disabledOnChain": true,
       "role": "gameplay",

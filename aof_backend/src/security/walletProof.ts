@@ -196,6 +196,7 @@ const MAPPED_MUTATIONS: MappedProof[] = [
   { path: "/chain/grid/collect", subject: "chain_grid_collect", selector: "user" },
   { path: "/chain/recipe/craft", subject: "chain_recipe_craft", selector: "user" },
   { path: "/chain/finale/seal", subject: "chain_finale_seal", selector: "user" },
+  { path: "/chain/finale/unlock-soul-access", subject: "chain_finale_unlock_soul_access", selector: "user" },
   { path: "/craft-order/create", subject: "craft_order_create", selector: "creator" },
   { path: "/craft-order/fulfill", subject: "craft_order_fulfill", selector: "fulfiller" },
   { path: "/craft-order/cancel", subject: "craft_order_cancel", selector: "creator" },
