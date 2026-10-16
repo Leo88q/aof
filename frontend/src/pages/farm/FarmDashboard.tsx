@@ -6,7 +6,7 @@ import { labHeroCopy } from "../../i18n/labHeroCopy";
 import { farmPlotCopy, buildingKeys } from "../../i18n/farmPlotCopy";
 import { ActiveBuffs } from "../../components/ActiveBuffs";
 import { GasTankPanel } from "../../components/GasTankPanel";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useNav } from "../../nav/NavContext";
 import { motion } from "framer-motion";
 import { api } from "../../lib/api";
@@ -34,6 +34,9 @@ import { MillPanel } from "./MillPanel";
 import { NeuralLabPanel } from "./NeuralLabPanel";
 import { UI_ICONS } from "../../lib/visualAssets";
 import { LabHero } from "../../components/farm/LabHero";
+
+const OrganismView = lazy(() => import("../../organism/OrganismView"));
+const ORGANISM_VIEW_ENABLED = import.meta.env.VITE_ORGANISM_VIEW === "1";
 import { EchoTrace, PlateGrid } from "../../ui/forge/devices";
 import { Note, Panel, Row, Rows, Sticker } from "../../ui/forge/kit";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
@@ -209,6 +212,14 @@ export function FarmDashboard() {
               </>
             }
           />
+
+          {/* Организм лаборатории (фаза 1, только просмотр). Фича-флаг VITE_ORGANISM_VIEW,
+              по умолчанию выключен; 3D-код грузится отдельным чанком. */}
+          {ORGANISM_VIEW_ENABLED && (
+            <Suspense fallback={null}>
+              <OrganismView owner={walletAddr} />
+            </Suspense>
+          )}
 
           {/* Дефект: снятие инструмента и разлок коллекционера берут 0.01 SOL
               из газ-бака, а пополнить его в интерфейсе было нечем. */}
