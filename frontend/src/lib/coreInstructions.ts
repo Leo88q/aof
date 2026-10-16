@@ -1202,6 +1202,15 @@ export const CORE_INSTRUCTIONS: readonly CoreInstructionSpec[] = [
     authorityOnly: false,
     trailingAccounts: null,
   },
+  {
+    name: "unlock_soul_access",
+    discriminator: [147, 195, 73, 209, 68, 183, 46, 4],
+    accounts: ["config", "user", "finale", "soul_access", "system_program"],
+    actorIndexes: [1],
+    signerIndexes: [1],
+    authorityOnly: false,
+    trailingAccounts: null,
+  },
 
 ];
 

@@ -57,12 +57,13 @@ test('базис фиксирует порядок enum, дискриминан�
     { name: 'set_tool_metadata_uris', discriminator: 'c6622920403298aa' },
     { name: 'claim_premium_season_reward', discriminator: 'e8218c145fee48c7' },
     { name: 'seal_laboratory', discriminator: '2dfef80fa19ad569' },
+    { name: 'unlock_soul_access', discriminator: '93c349d144b72e04' },
   ], 'все новые инструкции зафиксированы в порядке их appended IDL entries и с точным discriminator');
   assert.deepEqual(approvedAdditions?.errors?.AofError, [
 
     'PlayerNotInitialized', 'InvalidSeasonXpEntitlement', 'SeasonXpEntitlementExpired', 'SeasonXpNonceMismatch',
     'ToolMetadataRegistryFrozen', 'ToolMetadataRegistryNotFrozen', 'InvalidToolMetadataRegistry',
-    'InvalidToolMetadataUris', 'InvalidSellerFeeBasisPoints',
+    'InvalidToolMetadataUris', 'InvalidSellerFeeBasisPoints', 'SoulAccessLocked',
   ], 'новые error codes только appended — старые ordinal-коды сохраняются');
   const cursor = approvedAdditions?.accounts?.find((account) => account.name === 'SeasonXpClaimCursor');
   assert.deepEqual(cursor?.typeSequence, ['Pubkey', 'u32', 'u32', 'u8']);

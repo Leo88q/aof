@@ -569,6 +569,12 @@
       "payer": "player",
       "status": "ok",
       "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
+    },
+    "aof_core.UnlockSoulAccess.soul_access": {
+      "owner": "player",
+      "payer": "player",
+      "status": "ok",
+      "reason": "игрок сам инициирует действие и оплачивает rent своего аккаунта"
     }
   }
 }
