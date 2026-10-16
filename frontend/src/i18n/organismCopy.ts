@@ -1,0 +1,157 @@
+import type { Language } from './translations';
+
+export type OrganismCopy = {
+  title: string;
+  subtitle: string;
+  phaseNote: string;
+  disconnected: string;
+  loading: string;
+  unavailable: string;
+  webglMissing: string;
+  heart: string;
+  body: string;
+  limbs: string;
+  organs: string;
+  soulCore: string;
+  soulCoreNote: string;
+  unknown: string;
+  cell: { empty: string; growing: string; ready: string; unknown: string };
+  dock: { owned: string; working: string; none: string; unknownTools: string };
+  organNames: Record<'base' | 'model' | 'cores' | 'quartz' | 'bits' | 'fluids' | 'special', string>;
+};
+
+export const organismCopy: Record<Language, OrganismCopy> = {
+  en: {
+    title: 'Laboratory organism',
+    subtitle: 'One body: energy heart, ten cells, five tool limbs, 27 resources.',
+    phaseNote: 'View only. Nothing here changes balances or tools.',
+    disconnected: 'Connect a wallet to see your organism.',
+    loading: 'Reading the chain…',
+    unavailable: 'Some data is unavailable right now. Unknown values are not shown as zero.',
+    webglMissing: '3D view is not supported on this device. The list below shows the same data.',
+    heart: 'Energy heart',
+    body: 'Laboratory cells',
+    limbs: 'Tool limbs',
+    organs: 'Resource organs',
+    soulCore: 'Soul Core',
+    soulCoreNote: 'Future access. Not a reward in this version.',
+    unknown: 'unknown',
+    cell: { empty: 'empty', growing: 'growing', ready: 'ready', unknown: 'unknown' },
+    dock: { owned: 'owned', working: 'working', none: 'none', unknownTools: 'unknown' },
+    organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits and chips', fluids: 'Fluids', special: 'Special' },
+  },
+  ru: {
+    title: 'Организм лаборатории',
+    subtitle: 'Одно тело: сердце из энергии, десять клеток, пять инструментов и 27 ресурсов.',
+    phaseNote: 'Только просмотр. Здесь ничего не меняет балансы и инструменты.',
+    disconnected: 'Подключи кошелёк, чтобы увидеть свой организм.',
+    loading: 'Читаем цепочку…',
+    unavailable: 'Часть данных сейчас недоступна. Неизвестные значения не показываются как ноль.',
+    webglMissing: 'На этом устройстве 3D не поддерживается. Список ниже показывает те же данные.',
+    heart: 'Сердце из энергии',
+    body: 'Клетки лаборатории',
+    limbs: 'Инструменты',
+    organs: 'Органы ресурсов',
+    soulCore: 'Ядро души',
+    soulCoreNote: 'Будущий доступ. В этой версии это не награда.',
+    unknown: 'неизвестно',
+    cell: { empty: 'пусто', growing: 'растёт', ready: 'готово', unknown: 'неизвестно' },
+    dock: { owned: 'есть', working: 'в работе', none: 'нет', unknownTools: 'неизвестно' },
+    organNames: { base: 'База', model: 'Цепочка модели', cores: 'Ядра', quartz: 'Кварцы', bits: 'Биты и чипы', fluids: 'Флюиды', special: 'Особое' },
+  },
+  pt: {
+    title: 'Organismo do laboratório',
+    subtitle: 'Um corpo: coração de energia, dez células, cinco ferramentas e 27 recursos.',
+    phaseNote: 'Somente visualização. Nada aqui altera saldos ou ferramentas.',
+    disconnected: 'Conecte uma carteira para ver seu organismo.',
+    loading: 'Lendo a cadeia…',
+    unavailable: 'Alguns dados estão indisponíveis agora. Valores desconhecidos não aparecem como zero.',
+    webglMissing: 'A visualização 3D não é suportada neste dispositivo. A lista abaixo mostra os mesmos dados.',
+    heart: 'Coração de energia',
+    body: 'Células do laboratório',
+    limbs: 'Ferramentas',
+    organs: 'Órgãos de recursos',
+    soulCore: 'Núcleo da alma',
+    soulCoreNote: 'Acesso futuro. Não é recompensa nesta versão.',
+    unknown: 'desconhecido',
+    cell: { empty: 'vazia', growing: 'crescendo', ready: 'pronta', unknown: 'desconhecido' },
+    dock: { owned: 'possui', working: 'em uso', none: 'nenhuma', unknownTools: 'desconhecido' },
+    organNames: { base: 'Base', model: 'Cadeia do modelo', cores: 'Núcleos', quartz: 'Quartzos', bits: 'Bits e chips', fluids: 'Fluidos', special: 'Especial' },
+  },
+  es: {
+    title: 'Organismo del laboratorio',
+    subtitle: 'Un cuerpo: corazón de energía, diez celdas, cinco herramientas y 27 recursos.',
+    phaseNote: 'Solo vista. Nada aquí cambia saldos ni herramientas.',
+    disconnected: 'Conecta una cartera para ver tu organismo.',
+    loading: 'Leyendo la cadena…',
+    unavailable: 'Algunos datos no están disponibles ahora. Los valores desconocidos no se muestran como cero.',
+    webglMissing: 'La vista 3D no es compatible con este dispositivo. La lista de abajo muestra los mismos datos.',
+    heart: 'Corazón de energía',
+    body: 'Celdas del laboratorio',
+    limbs: 'Herramientas',
+    organs: 'Órganos de recursos',
+    soulCore: 'Núcleo del alma',
+    soulCoreNote: 'Acceso futuro. No es una recompensa en esta versión.',
+    unknown: 'desconocido',
+    cell: { empty: 'vacía', growing: 'creciendo', ready: 'lista', unknown: 'desconocido' },
+    dock: { owned: 'tienes', working: 'en uso', none: 'ninguna', unknownTools: 'desconocido' },
+    organNames: { base: 'Base', model: 'Cadena del modelo', cores: 'Núcleos', quartz: 'Cuarzos', bits: 'Bits y chips', fluids: 'Fluidos', special: 'Especial' },
+  },
+  vi: {
+    title: 'Cơ thể phòng thí nghiệm',
+    subtitle: 'Một cơ thể: trái tim năng lượng, mười ô, năm công cụ và 27 tài nguyên.',
+    phaseNote: 'Chỉ xem. Không có gì ở đây thay đổi số dư hay công cụ.',
+    disconnected: 'Kết nối ví để xem cơ thể của bạn.',
+    loading: 'Đang đọc chuỗi…',
+    unavailable: 'Một phần dữ liệu hiện không có sẵn. Giá trị chưa rõ không được hiển thị là 0.',
+    webglMissing: 'Thiết bị này không hỗ trợ xem 3D. Danh sách bên dưới hiển thị cùng dữ liệu.',
+    heart: 'Trái tim năng lượng',
+    body: 'Ô phòng thí nghiệm',
+    limbs: 'Công cụ',
+    organs: 'Cơ quan tài nguyên',
+    soulCore: 'Lõi linh hồn',
+    soulCoreNote: 'Quyền truy cập trong tương lai. Không phải phần thưởng ở phiên bản này.',
+    unknown: 'chưa rõ',
+    cell: { empty: 'trống', growing: 'đang phát triển', ready: 'sẵn sàng', unknown: 'chưa rõ' },
+    dock: { owned: 'có', working: 'đang chạy', none: 'không có', unknownTools: 'chưa rõ' },
+    organNames: { base: 'Nền tảng', model: 'Chuỗi mô hình', cores: 'Lõi', quartz: 'Thạch anh', bits: 'Bit và chip', fluids: 'Chất lỏng', special: 'Đặc biệt' },
+  },
+  id: {
+    title: 'Organisme laboratorium',
+    subtitle: 'Satu tubuh: jantung energi, sepuluh sel, lima alat, dan 27 sumber daya.',
+    phaseNote: 'Hanya tampilan. Tidak ada yang di sini mengubah saldo atau alat.',
+    disconnected: 'Hubungkan dompet untuk melihat organisme Anda.',
+    loading: 'Membaca rantai…',
+    unavailable: 'Sebagian data tidak tersedia sekarang. Nilai yang tidak diketahui tidak ditampilkan sebagai nol.',
+    webglMissing: 'Tampilan 3D tidak didukung di perangkat ini. Daftar di bawah menampilkan data yang sama.',
+    heart: 'Jantung energi',
+    body: 'Sel laboratorium',
+    limbs: 'Alat',
+    organs: 'Organ sumber daya',
+    soulCore: 'Inti jiwa',
+    soulCoreNote: 'Akses di masa depan. Bukan hadiah di versi ini.',
+    unknown: 'tidak diketahui',
+    cell: { empty: 'kosong', growing: 'tumbuh', ready: 'siap', unknown: 'tidak diketahui' },
+    dock: { owned: 'dimiliki', working: 'bekerja', none: 'tidak ada', unknownTools: 'tidak diketahui' },
+    organNames: { base: 'Dasar', model: 'Rantai model', cores: 'Inti', quartz: 'Kuarsa', bits: 'Bit dan chip', fluids: 'Cairan', special: 'Khusus' },
+  },
+  fil: {
+    title: 'Organismo ng laboratoryo',
+    subtitle: 'Isang katawan: pusong enerhiya, sampung cell, limang tool, at 27 resource.',
+    phaseNote: 'View lang. Walang binabago rito sa balanse o tool.',
+    disconnected: 'Ikonekta ang wallet para makita ang iyong organismo.',
+    loading: 'Binabasa ang chain…',
+    unavailable: 'Hindi available ang ilang data ngayon. Hindi ipinapakitang zero ang mga hindi kilalang halaga.',
+    webglMissing: 'Hindi suportado ng device na ito ang 3D view. Ipinapakita ng listahan sa ibaba ang parehong data.',
+    heart: 'Pusong enerhiya',
+    body: 'Mga cell ng laboratoryo',
+    limbs: 'Mga tool',
+    organs: 'Mga organo ng resource',
+    soulCore: 'Soul Core',
+    soulCoreNote: 'Future access. Hindi ito gantimpala sa bersyong ito.',
+    unknown: 'hindi alam',
+    cell: { empty: 'walang laman', growing: 'lumalaki', ready: 'handa', unknown: 'hindi alam' },
+    dock: { owned: 'meron', working: 'gumagana', none: 'wala', unknownTools: 'hindi alam' },
+    organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits at chips', fluids: 'Fluids', special: 'Espesyal' },
+  },
+};

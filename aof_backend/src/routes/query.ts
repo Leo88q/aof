@@ -630,7 +630,9 @@ r.get("/lab-tiles/:user", async (req, res) => {
         error: "LAB_STATE_UNAVAILABLE_FROM_CANONICAL_CHAIN",
       });
     }
-    res.json({ tiles });
+    // serverNow lets clients convert their own clock into chain time, so growth
+    // can be interpolated between polls without trusting the browser clock.
+    res.json({ tiles, serverNow: Math.floor(Date.now() / 1000) });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }

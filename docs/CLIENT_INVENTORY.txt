@@ -8,8 +8,8 @@
 Пересобрать явно: `node scripts/client-inventory.mjs --write`; проверить: `--check`.
 `--check` ничего не переписывает; после `--write` baseline нужно отдельно просмотреть и закоммитить.
 
-Файлов: 687 (frontend: 611, game: 76).
-sha256: 67e0535ef7b39f60f277f25d7a1808a6e4e4dfc5a53822240cfc2504d842cc80
+Файлов: 693 (frontend: 617, game: 76).
+sha256: 5f8381743aea0cca78624eb25c0a2ae3b9fc0253b6b7f0b785b43c7bf1b55cee
 
 ```
 frontend/.env.example
@@ -417,6 +417,7 @@ frontend/src/i18n/npcAdminCopy.ts
 frontend/src/i18n/offerCopy.ts
 frontend/src/i18n/onboardingCopy.ts
 frontend/src/i18n/orderbookCopy.ts
+frontend/src/i18n/organismCopy.ts
 frontend/src/i18n/packsCopy.ts
 frontend/src/i18n/profileCopy.ts
 frontend/src/i18n/questsHomeCopy.ts
@@ -532,6 +533,10 @@ frontend/src/nav/TabBar.tsx
 frontend/src/nav/TabFallback.tsx
 frontend/src/nav/TabPager.tsx
 frontend/src/nav/tabChunks.ts
+frontend/src/organism/OrganismView.tsx
+frontend/src/organism/model.ts
+frontend/src/organism/registry.ts
+frontend/src/organism/scene.ts
 frontend/src/pages/admin/AuditLogPage.tsx
 frontend/src/pages/admin/EconomyDashboard.tsx
 frontend/src/pages/admin/NpcDashboard.tsx
@@ -615,6 +620,7 @@ frontend/src/vite-env.d.ts
 frontend/stylelint.aof.config.mjs
 frontend/tailwind.config.js
 frontend/tests/legal-release.test.mjs
+frontend/tests/organism.test.ts
 frontend/tests/privacy-browser.mjs
 frontend/tests/privacy.test.ts
 frontend/tests/security.test.ts
