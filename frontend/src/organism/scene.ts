@@ -58,10 +58,12 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
   // Body: ten lab cells on a ring.
   const cellGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.5, 20);
   const cells: Array<{ mesh: THREE.Mesh; fill: THREE.Mesh; fillMat: THREE.MeshStandardMaterial; base: THREE.MeshStandardMaterial }> = [];
-  const fillGeo = new THREE.CylinderGeometry(0.11, 0.11, 1, 16);
+  const fillGeo = new THREE.CylinderGeometry(0.13, 0.13, 1, 16);
   for (let i = 0; i < 10; i += 1) {
     const angle = (i / 10) * Math.PI * 2;
-    const base = new THREE.MeshStandardMaterial({ color: EMPTY, emissive: 0x0f1a24, emissiveIntensity: 0.6, roughness: 0.6 });
+    // The shell is translucent glass: the growth fill lives inside it and must
+    // stay visible through it. An opaque shell hides the fill completely.
+    const base = new THREE.MeshStandardMaterial({ color: EMPTY, emissive: 0x0f1a24, emissiveIntensity: 0.6, roughness: 0.6, transparent: true, opacity: 0.38, depthWrite: false });
     const mesh = new THREE.Mesh(cellGeo, base);
     mesh.position.set(Math.cos(angle) * 1.6, 0.1, Math.sin(angle) * 1.6);
     const fillMat = new THREE.MeshStandardMaterial({ color: GROWING, emissive: GROWING, emissiveIntensity: 0.8 });
@@ -150,13 +152,14 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
       } else {
         slot.base.color.setHex(0x3a5468);
         slot.fill.visible = true;
-        const h = Math.max(0.05, cell.progress * 0.5);
+        const h = Math.max(0.1, cell.progress * 0.5);
         slot.fill.scale.set(1, h, 1);
         slot.fill.position.y = 0.1 - 0.25 + h / 2;
         slot.fill.position.x = slot.mesh.position.x;
         slot.fill.position.z = slot.mesh.position.z;
         slot.fillMat.color.setHex(cell.state === 'ready' ? READY : GROWING);
         slot.fillMat.emissive.setHex(cell.state === 'ready' ? READY : GROWING);
+        slot.fillMat.emissiveIntensity = cell.state === 'ready' ? 1.2 : 1.5;
       }
     });
     s.docks.forEach((dock, i) => {
