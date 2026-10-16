@@ -18,6 +18,8 @@ export interface OrganismInput {
   tools: unknown[] | null;
   /** Energy snapshot, or null if unavailable. */
   energy: { amount?: unknown; cap?: unknown } | null;
+  /** Completed laboratory seals from /query/laboratory-finale, or null if unavailable. */
+  seals?: unknown;
 }
 
 export interface CellView {
@@ -36,6 +38,30 @@ export interface DockView {
   working: number;
   /** Highest rarity among owned tools of this kind. */
   bestRarity: Rarity | null;
+  /** Lowest readable durability among owned tools of this kind (0..20), null when unknown. */
+  minDurability: number | null;
+}
+
+/** ToolData.durability range on-chain (0..20). */
+export const DURABILITY_MAX = 20;
+
+/** One full seal set, burned 1 each by the laboratory seal (see the design doc). */
+export const SOUL_ASSEMBLY: readonly string[] = [
+  'model',
+  'cryoFluid',
+  'voltFluid',
+  'bioFluid',
+  'nanoFluid',
+  'quantumFluid',
+  'amberQuartz',
+];
+
+export interface SoulAssemblyItem {
+  id: string;
+  /** null when the balance is unknown. */
+  amount: number | null;
+  /** True only when the balance is known to cover the burned amount of 1. */
+  ready: boolean;
 }
 
 export interface ResourceView {
@@ -57,7 +83,16 @@ export interface OrganismState {
   docks: DockView[];
   organs: OrganView[];
   /** The terminal resource (future access, not a reward in phase 1). */
-  soulCore: { known: boolean; amount: number | null };
+  soulCore: {
+    known: boolean;
+    amount: number | null;
+    /** Progress toward one full seal set, derived from the same balances. */
+    assembly: SoulAssemblyItem[];
+    assemblyReady: number;
+    assemblyTotal: number;
+    /** Completed seals when the finale account was readable, else null. */
+    seals: number | null;
+  };
 }
 
 export const CELL_COUNT = 10;
@@ -151,10 +186,11 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   // Limbs: tools grouped by kind.
   const tools = input.tools;
   const docks: DockView[] = TOOL_DOCKS.map((dock) => {
-    if (!tools) return { toolType: dock.toolType, resource: dock.resource, owned: null, working: 0, bestRarity: null };
+    if (!tools) return { toolType: dock.toolType, resource: dock.resource, owned: null, working: 0, bestRarity: null, minDurability: null };
     let owned = 0;
     let working = 0;
     let best: Rarity | null = null;
+    let minDurability: number | null = null;
     for (const raw of tools) {
       if (!raw || typeof raw !== 'object') continue;
       const tool = raw as Record<string, unknown>;
@@ -163,8 +199,13 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
       if (isMiningNow(tool, nowSec)) working += 1;
       const rarity = normalizeRarity(tool.rarity);
       if (rarity && (best === null || RARITY_ORDER.indexOf(rarity) > RARITY_ORDER.indexOf(best))) best = rarity;
+      // Durability is a u8 on-chain; only the canonical 0..20 range is shown.
+      const durability = toNumber(tool.durability);
+      if (durability !== null && durability >= 0 && durability <= DURABILITY_MAX) {
+        minDurability = minDurability === null ? durability : Math.min(minDurability, durability);
+      }
     }
-    return { toolType: dock.toolType, resource: dock.resource, owned, working, bestRarity: best };
+    return { toolType: dock.toolType, resource: dock.resource, owned, working, bestRarity: best, minDurability };
   });
 
   // Organs: intensity is log-scaled against the largest known balance.
@@ -191,11 +232,24 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   }));
 
   const soulAmount = amountOf('soulCore');
+  const assembly: SoulAssemblyItem[] = SOUL_ASSEMBLY.map((id) => {
+    const amt = amountOf(id);
+    return { id, amount: amt, ready: amt !== null && amt >= 1 };
+  });
+  const sealsRaw = toNumber(input.seals);
+  const seals = sealsRaw !== null && sealsRaw >= 0 ? Math.floor(sealsRaw) : null;
   return {
     heart,
     cells,
     docks,
     organs,
-    soulCore: { known: soulAmount !== null, amount: soulAmount },
+    soulCore: {
+      known: soulAmount !== null,
+      amount: soulAmount,
+      assembly,
+      assemblyReady: assembly.filter((a) => a.ready).length,
+      assemblyTotal: assembly.length,
+      seals,
+    },
   };
 }

@@ -4,7 +4,7 @@
  * and never writes chain or API state.
  */
 import * as THREE from 'three';
-import type { OrganismState } from './model';
+import { DURABILITY_MAX, type OrganismState } from './model';
 import { ORGAN_IDS, type OrganId } from './registry';
 
 const RARITY_COLOR: Record<string, number> = {
@@ -195,10 +195,16 @@ export function createOrganismScene(container: HTMLElement): OrganismScene {
     if (s.soulCore.known && (s.soulCore.amount ?? 0) > 0) {
       soulMat.color.setHex(0xffd166);
       soulMat.userData.lit = true;
+      soulMat.userData.assemblyShare = 1;
     } else {
       soulMat.color.setHex(UNKNOWN);
       soulMat.userData.lit = false;
+      // Assembly progress toward one seal set, from the same known balances.
+      soulMat.userData.assemblyShare = s.soulCore.assemblyTotal > 0
+        ? s.soulCore.assemblyReady / s.soulCore.assemblyTotal
+        : 0;
     }
+    soul.scale.setScalar(0.75 + 0.5 * Number(soulMat.userData.assemblyShare ?? 0));
   }
 
   function resize() {

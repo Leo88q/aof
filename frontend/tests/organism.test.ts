@@ -128,3 +128,37 @@ test('growth is interpolated on chain time from startedAt/readyAt and never reac
   const apiOnly = deriveOrganism({ ...emptyInput(), tiles: [{ index: 0, active: true, ready: false, progress: 30 }] }, NOW);
   assert.ok(Math.abs(apiOnly.cells[0].progress - 0.3) < 1e-9);
 });
+
+test('dock durability: lowest readable value wins, unknown stays null, out-of-range ignored', () => {
+  const tools = [
+    { toolType: 'neural_seeder', rarity: 'common', durability: 18 },
+    { toolType: 'neural_seeder', rarity: 'rare', durability: '7' },
+    { toolType: 'plasma_cutter', rarity: 'common', durability: 99 },
+    { toolType: 'plasma_cutter', rarity: 'common' },
+  ];
+  const s = deriveOrganism({ ...emptyInput(), tools }, NOW);
+  const dock = (t: string) => s.docks.find((d) => d.toolType === t)!;
+  assert.equal(dock('neural_seeder').minDurability, 7);
+  assert.equal(dock('plasma_cutter').minDurability, null);
+  assert.equal(dock('silicon_extractor').minDurability, null);
+  const unknown = deriveOrganism(emptyInput(), NOW);
+  assert.ok(unknown.docks.every((d) => d.minDurability === null));
+});
+
+test('soul assembly: seven seal components at 1 each, seals pass through, unknown stays unknown', () => {
+  const balances: Record<string, number> = {};
+  for (const r of RESOURCES) balances[resourceKey(r.id)] = 0;
+  balances[resourceKey('model')] = 1;
+  balances[resourceKey('cryoFluid')] = 3;
+  balances[resourceKey('amberQuartz')] = 1;
+  const s = deriveOrganism({ ...emptyInput(), balances, seals: 2 }, NOW);
+  assert.equal(s.soulCore.assemblyTotal, 7);
+  assert.equal(s.soulCore.assemblyReady, 3);
+  assert.equal(s.soulCore.assembly.find((a) => a.id === 'model')?.ready, true);
+  assert.equal(s.soulCore.assembly.find((a) => a.id === 'voltFluid')?.ready, false);
+  assert.equal(s.soulCore.seals, 2);
+  const unknown = deriveOrganism(emptyInput(), NOW);
+  assert.equal(unknown.soulCore.assemblyReady, 0);
+  assert.ok(unknown.soulCore.assembly.every((a) => a.amount === null && a.ready === false));
+  assert.equal(unknown.soulCore.seals, null);
+});

@@ -16,7 +16,9 @@ export type OrganismCopy = {
   soulCoreNote: string;
   unknown: string;
   cell: { empty: string; growing: string; ready: string; unknown: string };
-  dock: { owned: string; working: string; none: string; unknownTools: string };
+  dock: { owned: string; working: string; none: string; unknownTools: string; durability: string };
+  assembly: string;
+  seals: string;
   organNames: Record<'base' | 'model' | 'cores' | 'quartz' | 'bits' | 'fluids' | 'special', string>;
 };
 
@@ -37,7 +39,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Future access. Not a reward in this version.',
     unknown: 'unknown',
     cell: { empty: 'empty', growing: 'growing', ready: 'ready', unknown: 'unknown' },
-    dock: { owned: 'owned', working: 'working', none: 'none', unknownTools: 'unknown' },
+    dock: { owned: 'owned', working: 'working', none: 'none', unknownTools: 'unknown', durability: 'durability (lowest)' },
+    assembly: 'Seal assembly',
+    seals: 'seals completed',
     organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits and chips', fluids: 'Fluids', special: 'Special' },
   },
   ru: {
@@ -56,7 +60,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Будущий доступ. В этой версии это не награда.',
     unknown: 'неизвестно',
     cell: { empty: 'пусто', growing: 'растёт', ready: 'готово', unknown: 'неизвестно' },
-    dock: { owned: 'есть', working: 'в работе', none: 'нет', unknownTools: 'неизвестно' },
+    dock: { owned: 'есть', working: 'в работе', none: 'нет', unknownTools: 'неизвестно', durability: 'прочность (низшая)' },
+    assembly: 'Сборка печати',
+    seals: 'печатей завершено',
     organNames: { base: 'База', model: 'Цепочка модели', cores: 'Ядра', quartz: 'Кварцы', bits: 'Биты и чипы', fluids: 'Флюиды', special: 'Особое' },
   },
   pt: {
@@ -75,7 +81,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Acesso futuro. Não é recompensa nesta versão.',
     unknown: 'desconhecido',
     cell: { empty: 'vazia', growing: 'crescendo', ready: 'pronta', unknown: 'desconhecido' },
-    dock: { owned: 'possui', working: 'em uso', none: 'nenhuma', unknownTools: 'desconhecido' },
+    dock: { owned: 'possui', working: 'em uso', none: 'nenhuma', unknownTools: 'desconhecido', durability: 'durabilidade (menor)' },
+    assembly: 'Montagem do selo',
+    seals: 'selos concluídos',
     organNames: { base: 'Base', model: 'Cadeia do modelo', cores: 'Núcleos', quartz: 'Quartzos', bits: 'Bits e chips', fluids: 'Fluidos', special: 'Especial' },
   },
   es: {
@@ -94,7 +102,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Acceso futuro. No es una recompensa en esta versión.',
     unknown: 'desconocido',
     cell: { empty: 'vacía', growing: 'creciendo', ready: 'lista', unknown: 'desconocido' },
-    dock: { owned: 'tienes', working: 'en uso', none: 'ninguna', unknownTools: 'desconocido' },
+    dock: { owned: 'tienes', working: 'en uso', none: 'ninguna', unknownTools: 'desconocido', durability: 'durabilidad (menor)' },
+    assembly: 'Ensamblaje del sello',
+    seals: 'sellos completados',
     organNames: { base: 'Base', model: 'Cadena del modelo', cores: 'Núcleos', quartz: 'Cuarzos', bits: 'Bits y chips', fluids: 'Fluidos', special: 'Especial' },
   },
   vi: {
@@ -113,7 +123,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Quyền truy cập trong tương lai. Không phải phần thưởng ở phiên bản này.',
     unknown: 'chưa rõ',
     cell: { empty: 'trống', growing: 'đang phát triển', ready: 'sẵn sàng', unknown: 'chưa rõ' },
-    dock: { owned: 'có', working: 'đang chạy', none: 'không có', unknownTools: 'chưa rõ' },
+    dock: { owned: 'có', working: 'đang chạy', none: 'không có', unknownTools: 'chưa rõ', durability: 'độ bền (thấp nhất)' },
+    assembly: 'Lắp ráp con dấu',
+    seals: 'con dấu đã hoàn thành',
     organNames: { base: 'Nền tảng', model: 'Chuỗi mô hình', cores: 'Lõi', quartz: 'Thạch anh', bits: 'Bit và chip', fluids: 'Chất lỏng', special: 'Đặc biệt' },
   },
   id: {
@@ -132,7 +144,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Akses di masa depan. Bukan hadiah di versi ini.',
     unknown: 'tidak diketahui',
     cell: { empty: 'kosong', growing: 'tumbuh', ready: 'siap', unknown: 'tidak diketahui' },
-    dock: { owned: 'dimiliki', working: 'bekerja', none: 'tidak ada', unknownTools: 'tidak diketahui' },
+    dock: { owned: 'dimiliki', working: 'bekerja', none: 'tidak ada', unknownTools: 'tidak diketahui', durability: 'daya tahan (terendah)' },
+    assembly: 'Perakitan segel',
+    seals: 'segel selesai',
     organNames: { base: 'Dasar', model: 'Rantai model', cores: 'Inti', quartz: 'Kuarsa', bits: 'Bit dan chip', fluids: 'Cairan', special: 'Khusus' },
   },
   fil: {
@@ -151,7 +165,9 @@ export const organismCopy: Record<Language, OrganismCopy> = {
     soulCoreNote: 'Future access. Hindi ito gantimpala sa bersyong ito.',
     unknown: 'hindi alam',
     cell: { empty: 'walang laman', growing: 'lumalaki', ready: 'handa', unknown: 'hindi alam' },
-    dock: { owned: 'meron', working: 'gumagana', none: 'wala', unknownTools: 'hindi alam' },
+    dock: { owned: 'meron', working: 'gumagana', none: 'wala', unknownTools: 'hindi alam', durability: 'tibay (pinakamababa)' },
+    assembly: 'Pagbuo ng selyo',
+    seals: 'mga selyong tapos na',
     organNames: { base: 'Base', model: 'Model chain', cores: 'Cores', quartz: 'Quartz', bits: 'Bits at chips', fluids: 'Fluids', special: 'Espesyal' },
   },
 };

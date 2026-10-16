@@ -10,7 +10,7 @@ import { fmtNum } from '../lib/marketUtils';
 import { useLocale } from '../i18n/LocaleProvider';
 import { organismCopy } from '../i18n/organismCopy';
 import { homeResourceNames, type ResourceId } from '../i18n/homeDetail';
-import { deriveOrganism, toNumber, type OrganismInput } from './model';
+import { deriveOrganism, toNumber, DURABILITY_MAX, type OrganismInput } from './model';
 import { ORGANS, ORGAN_IDS, type OrganId } from './registry';
 import { createOrganismScene, type OrganismScene } from './scene';
 
@@ -39,14 +39,18 @@ export default function OrganismView({ owner }: { owner: string | null }) {
     }
     let alive = true;
     const load = async () => {
-      const [b, t, m, e] = await Promise.allSettled([
+      const [b, t, m, e, f] = await Promise.allSettled([
         api.query.balances(owner),
         api.query.labTiles(owner),
         api.query.myTools(owner),
         api.energy.balance(owner),
+        api.query.laboratoryFinale(owner),
       ]);
       if (!alive) return;
       const balances = b.status === 'fulfilled' ? readEconomyBalances(b.value) : null;
+      const seals = f.status === 'fulfilled' && f.value && typeof f.value === 'object'
+        ? (f.value as { seals?: unknown }).seals
+        : null;
       const tiles = t.status === 'fulfilled' && Array.isArray((t.value as { tiles?: unknown })?.tiles)
         ? ((t.value as { tiles: unknown[] }).tiles)
         : null;
@@ -57,7 +61,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
       // Convert the browser clock into chain time using the server's serverNow.
       const serverNow = t.status === 'fulfilled' ? toNumber((t.value as { serverNow?: unknown })?.serverNow) : null;
       const clockOffsetSec = serverNow !== null ? serverNow - Date.now() / 1000 : 0;
-      setSnapshot({ balances, tiles, tools, energy, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
+      setSnapshot({ balances, tiles, tools, energy, seals, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
     };
     load();
     const id = window.setInterval(load, POLL_MS);
@@ -141,6 +145,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
               {d.toolType}: {d.owned === null ? copy.dock.unknownTools : `${copy.dock.owned} ${d.owned}`}
               {d.owned !== null && d.owned > 0 ? `, ${copy.dock.working} ${d.working}` : ''}
               {d.bestRarity ? ` (${d.bestRarity})` : ''}
+              {d.minDurability !== null ? `, ${copy.dock.durability} ${d.minDurability}/${DURABILITY_MAX}` : ''}
             </li>
           ))}
         </ul>
@@ -166,6 +171,15 @@ export default function OrganismView({ owner }: { owner: string | null }) {
         <p>
           {amountText(state.soulCore.amount)} · {copy.soulCoreNote}
         </p>
+        <p>
+          {copy.assembly}: {state.soulCore.assemblyReady} / {state.soulCore.assemblyTotal}
+          {state.soulCore.seals !== null ? ` · ${copy.seals}: ${state.soulCore.seals}` : ''}
+        </p>
+        <ul>
+          {state.soulCore.assembly.map((a) => (
+            <li key={a.id}>{resourceName(a.id)}: {amountText(a.amount)} / 1</li>
+          ))}
+        </ul>
       </div>
     </section>
   );
