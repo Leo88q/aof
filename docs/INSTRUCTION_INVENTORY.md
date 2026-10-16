@@ -11,13 +11,13 @@
 
 | Программа | Инструкций | Отключено в коде | Задеты validator-тестами (статически) | Без call sites* | Без call sites и тестов* |
 |---|---:|---:|---:|---:|---:|
-| aof_core | 130 | 1 | 95 (73%) | 14 | 2 |
+| aof_core | 130 | 1 | 95 (73%) | 14 | 1 |
 | aof_market | 12 | 0 | 4 (33%) | 0 | 0 |
 | aof_quests | 16 | 0 | 0 (0%) | 2 | 2 |
 | aof_rebirth | 5 | 0 | 2 (40%) | 0 | 0 |
 | aof_liquidity | 6 | 0 | 0 (0%) | 0 | 0 |
 | aof_session_keys | 7 | 2 | 0 (0%) | 5 | 0 |
-| **всего** | **176** | **3** | **101** (57%) | **21** | **4** |
+| **всего** | **176** | **3** | **101** (57%) | **21** | **3** |
 
 \* без инструкций с общими именами. «Задеты validator-тестами» — статический подсчёт вызовов `<получатель>.methods.<имя>(` в `tests/*.ts`. Динамический замер CU
 (`tests/aof_cu_report.ts`, только aof_core, только успешные транзакции) может дать другое число; он остаётся авторитетным для CU.
@@ -70,7 +70,7 @@
 | aof_core.vrf_slot_recover | emergency | active | readiness | Оператор снимает блокировку слота VRF, чей держатель исчез. |
 | aof_core.sync_tool_owner | gameplay | active | validator | Приводит кэш ToolData.owner/operator в соответствие с фактическим держателем supply-1 токена после обычного SPL-перевода; подписывает новый держатель, escrow-состояния (стейк/аренда/листинг/аукцион) не проходят proof. |
 | aof_core.seal_laboratory | gameplay | active | readiness | Печать лаборатории: сжигает модель, пять флюидов и янтарный сосуд, выпускает ядро души. |
-| aof_core.unlock_soul_access | gameplay | active | — | SoulCore gameplay gate: opens SoulAccess after at least one completed laboratory seal; moves no resources. |
+| aof_core.unlock_soul_access | gameplay | active | readiness | SoulCore gameplay gate: opens SoulAccess after at least one completed laboratory seal; moves no resources. |
 | aof_quests.init_quest_config | initialization | active | — | QuestConfig: mint награды и казна; bringup эту инициализацию пока не выполняет. |
 | aof_quests.quest_init | admin | active | — | Оператор создаёт квест; клиента для этого пока нет (инструмент оператора). |
 | aof_session_keys.session_check_and_spend | gameplay | disabled-on-chain | selfTests, rust | disabled / product decision pending — Отключена (AtomicBindingRequired): резервирование не привязано к целевой инструкции в одной транзакции. |
@@ -117,7 +117,7 @@
 | aof_core | forge_attempt_reveal | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
 | aof_core | forge_attempt_expire | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |  |
 | aof_core | grant_season_xp | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 4 | 0 |  |
-| aof_core | harvest_synapse | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 5 | 1 |  |
+| aof_core | harvest_synapse | gameplay | active | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 0 | 6 | 1 |  |
 | aof_core | init_craft_economy | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | ✓ |
 | aof_core | init_lottery_round | admin | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | ✓ |
 | aof_core | init_material_mints | initialization | active | 1 | 1 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
@@ -148,7 +148,7 @@
 | aof_core | rental_end | gameplay | active | 1 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 | 1 |  |
 | aof_core | rental_list | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |  |
 | aof_core | rental_revoke | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 |  |
-| aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 1 | 0 | 2 | 0 | 1 | 0 |  |
+| aof_core | repair | gameplay | active | 1 | 0 | 5 | 0 | 1 | 0 | 2 | 0 | 2 | 0 |  |
 | aof_core | start_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | collect_mining_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
 | aof_core | repair_delegated | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |  |
@@ -215,7 +215,7 @@
 | aof_core | set_tool_metadata_uris | admin | active | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 3 | 0 |  |
 | aof_core | claim_premium_season_reward | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | ✓ |
 | aof_core | seal_laboratory | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 |  |
-| aof_core | unlock_soul_access | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |  |
+| aof_core | unlock_soul_access | gameplay | active | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |  |
 | aof_market | crank_market | gameplay | active | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | ✓ |
 | aof_market | hot_market_buy | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 0 | ✓ |
 | aof_market | hot_market_sell_into_queue | gameplay | active | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | ✓ |

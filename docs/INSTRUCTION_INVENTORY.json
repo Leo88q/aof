@@ -40,7 +40,7 @@
     "validatorTested": 101,
     "sharedNames": 19,
     "withoutAnyCallSite": 21,
-    "withoutCallSiteAndTest": 4
+    "withoutCallSiteAndTest": 3
   },
   "programs": {
     "aof_core": {
@@ -59,7 +59,7 @@
       "validatorTested": 95,
       "sharedNames": 5,
       "withoutAnyCallSite": 14,
-      "withoutCallSiteAndTest": 2
+      "withoutCallSiteAndTest": 1
     },
     "aof_market": {
       "instructions": 12,
@@ -2092,8 +2092,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 5,
+          "mentions": 6,
           "files": [
+            "tests/readiness/organism-phase2.test.cjs",
             "tests/readiness/payer-reward-claim.test.cjs",
             "tests/readiness/resource-evidence.test.cjs",
             "tests/readiness/season-xp-claim.test.cjs",
@@ -3885,8 +3886,9 @@
         },
         "readiness": {
           "calls": 0,
-          "mentions": 1,
+          "mentions": 2,
           "files": [
+            "tests/readiness/organism-phase2.test.cjs",
             "tests/readiness/resource-evidence.test.cjs"
           ]
         }
@@ -7527,11 +7529,19 @@
       "callSites": {},
       "registries": [],
       "bringup": [],
-      "tests": {},
+      "tests": {
+        "readiness": {
+          "calls": 0,
+          "mentions": 1,
+          "files": [
+            "tests/readiness/organism-phase2.test.cjs"
+          ]
+        }
+      },
       "summary": {
         "callSiteCount": 0,
         "validatorTested": false,
-        "anyTest": false
+        "anyTest": true
       }
     },
     {
