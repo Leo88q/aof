@@ -3769,6 +3769,10 @@
         {
           "name": "seal_laboratory",
           "discriminator": "2dfef80fa19ad569"
+        },
+        {
+          "name": "unlock_soul_access",
+          "discriminator": "93c349d144b72e04"
         }
       ],
       "accounts": [
@@ -3901,6 +3905,36 @@
             "u8"
           ],
           "size": 45
+        },
+        {
+          "file": "aof-core/src/state.rs",
+          "name": "SoulAccess",
+          "initSpace": true,
+          "fields": [
+            {
+              "name": "owner",
+              "type": "Pubkey"
+            },
+            {
+              "name": "unlocked_at",
+              "type": "i64"
+            },
+            {
+              "name": "seals_at_unlock",
+              "type": "u32"
+            },
+            {
+              "name": "bump",
+              "type": "u8"
+            }
+          ],
+          "typeSequence": [
+            "Pubkey",
+            "i64",
+            "u32",
+            "u8"
+          ],
+          "size": 53
         }
       ],
       "errors": {
@@ -3913,7 +3947,8 @@
           "ToolMetadataRegistryNotFrozen",
           "InvalidToolMetadataRegistry",
           "InvalidToolMetadataUris",
-          "InvalidSellerFeeBasisPoints"
+          "InvalidSellerFeeBasisPoints",
+          "SoulAccessLocked"
         ]
       }
     },

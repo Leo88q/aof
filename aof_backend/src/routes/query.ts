@@ -9,10 +9,11 @@ import { cachedFetchAll as fetchAll, cachedFetchOne as fetchOne, memcmpFilter } 
 import { pk } from "../lib/tx";
 import { PROGRAM_ID } from "../config";
 import { decodeLaboratoryFinale } from "../lib/laboratoryFinale";
+import { decodeSoulAccess } from "../lib/soulAccess";
 import { auctionPda, collectorPda, configPda, craftEconomyPda, enchantSlotPda, gastankPda,
   listingPda, lotteryRoundPda, offerPda, packConfigPda, playerPda,
   rarityCounterPda, rentalAgreementPda, rentalListingPda, seasonPassPda, seasonPda, rerollConfigPda,
-  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, laboratoryFinalePda, marketConfigPda,
+  toolPda, hotMarketPoolPda, hotMarketQueuePda, materialMintsPda, labTilePda, laboratoryFinalePda, soulAccessPda, marketConfigPda,
   weatherStatePda, gridStatePda, signalStatePda, modelStatePda } from "../lib/pda";
 import { validateCanonicalResourceRegistry } from "../lib/resourceRegistry";
 
@@ -719,6 +720,34 @@ r.get("/laboratory-finale/:owner", async (req, res) => {
     return res.json({ exists: decoded.exists, seals: decoded.seals, address: address.toBase58() });
   } catch {
     return res.status(503).json({ error: "LABORATORY_FINALE_READ_FAILED" });
+  }
+});
+
+// Ворота SoulCore. Отсутствующий счёт — честно закрыто. Чужой или битый счёт — не закрыто и не открыто.
+r.get("/soul-access/:owner", async (req, res) => {
+  let owner: PublicKey;
+  try {
+    owner = new PublicKey(req.params.owner);
+  } catch {
+    return res.status(400).json({ error: "INVALID_PLAYER_ADDRESS" });
+  }
+  const [address] = soulAccessPda(owner);
+  try {
+    const info = await connection.getAccountInfo(address, "confirmed");
+    if (!info) return res.json({ exists: false, unlocked: false, address: address.toBase58() });
+    if (!info.owner.equals(PROGRAM_ID)) {
+      return res.status(503).json({ error: "SOUL_ACCESS_ACCOUNT_OWNER_MISMATCH" });
+    }
+    const decoded = decodeSoulAccess(info.data, owner.toBytes());
+    if (!decoded.ok) return res.status(503).json({ error: decoded.error });
+    return res.json({
+      exists: decoded.exists,
+      unlocked: decoded.unlocked,
+      ...(decoded.unlocked ? { unlockedAt: decoded.unlockedAt, sealsAtUnlock: decoded.sealsAtUnlock } : {}),
+      address: address.toBase58(),
+    });
+  } catch {
+    return res.status(503).json({ error: "SOUL_ACCESS_READ_FAILED" });
   }
 });
 

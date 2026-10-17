@@ -46,6 +46,7 @@ const WALLET_PROOF_ROUTES: WalletProofRoute[] = [
   { path: "/chain/grid/collect", subject: "chain_grid_collect", field: "user" },
   { path: "/chain/recipe/craft", subject: "chain_recipe_craft", field: "user" },
   { path: "/chain/finale/seal", subject: "chain_finale_seal", field: "user" },
+  { path: "/chain/finale/unlock-soul-access", subject: "chain_finale_unlock_soul_access", field: "user" },
   { path: "/craft-order/create", subject: "craft_order_create", field: "creator" },
   { path: "/craft-order/fulfill", subject: "craft_order_fulfill", field: "fulfiller" },
   { path: "/craft-order/cancel", subject: "craft_order_cancel", field: "creator" },
@@ -253,6 +254,7 @@ export const api = {
     packConfig: (type: number) => get(`/query/pack-config/${type}`),
     player: (owner: string) => get(`/query/player/${owner}`),
     laboratoryFinale: (owner: string) => get(`/query/laboratory-finale/${owner}`),
+    soulAccess: (owner: string) => get(`/query/soul-access/${owner}`),
     soulCoreSupply: () => get(`/query/soul-core-supply`),
     gastank: (owner: string) => get(`/query/gastank/${owner}`),
     collector: (mint: string) => get(`/query/collector/${mint}`),
@@ -349,6 +351,7 @@ export const api = {
     // Мгновенный крафт (гемы/баночки)
     craftRecipe: (v: any) => post("/chain/recipe/craft", v),
     sealLaboratory: (v: any) => post("/chain/finale/seal", v),
+    unlockSoulAccess: (v: any) => post("/chain/finale/unlock-soul-access", v),
   },
 
   collectors: {

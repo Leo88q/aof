@@ -333,4 +333,7 @@ pub enum AofError {
     InvalidToolMetadataUris,
     #[msg("Seller fee basis points must be at most 10000 and identical across batches")]
     InvalidSellerFeeBasisPoints,
+    // SoulCore access: append-only error codes.
+    #[msg("Soul Core access requires at least one completed laboratory seal")]
+    SoulAccessLocked,
 }

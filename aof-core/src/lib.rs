@@ -3457,6 +3457,25 @@ pub struct SealLaboratory<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct UnlockSoulAccess<'info> {
+    #[account(seeds = [CONFIG_SEED], bump = config.bump, constraint = !config.paused @ AofError::Paused)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    #[account(seeds = [LABORATORY_FINALE_SEED, user.key().as_ref()], bump = finale.bump)]
+    pub finale: Box<Account<'info, LaboratoryFinale>>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + SoulAccess::INIT_SPACE,
+        seeds = [SOUL_ACCESS_SEED, user.key().as_ref()],
+        bump
+    )]
+    pub soul_access: Box<Account<'info, SoulAccess>>,
+    pub system_program: Program<'info, System>,
+}
+
 // ----- Ордербук ресурсов -----
 
 #[derive(Accounts)]
@@ -4611,5 +4630,11 @@ pub mod aof_core {
     /// Burn one full component set and mint one Soul Core. The player pays rent.
     pub fn seal_laboratory(ctx: Context<SealLaboratory>) -> Result<()> {
         instructions::seal_laboratory::handler(ctx)
+    }
+
+    /// Open the SoulCore gameplay gate after at least one completed seal.
+    /// Moves no resources; the SoulAccess account is the on-chain proof.
+    pub fn unlock_soul_access(ctx: Context<UnlockSoulAccess>) -> Result<()> {
+        instructions::soul_access::handler(ctx)
     }
 }

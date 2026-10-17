@@ -13305,6 +13305,110 @@ export type AofCore = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "unlockSoulAccess",
+      "discriminator": [
+        147,
+        195,
+        73,
+        209,
+        68,
+        183,
+        46,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "finale",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  97,
+                  98,
+                  111,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114,
+                  121,
+                  95,
+                  102,
+                  105,
+                  110,
+                  97,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "soulAccess",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  117,
+                  108,
+                  95,
+                  97,
+                  99,
+                  99,
+                  101,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -13904,6 +14008,19 @@ export type AofCore = {
         51,
         152,
         49
+      ]
+    },
+    {
+      "name": "SoulAccess",
+      "discriminator": [
+        12,
+        221,
+        61,
+        198,
+        124,
+        116,
+        189,
+        213
       ]
     }
   ],
@@ -14934,6 +15051,19 @@ export type AofCore = {
         84,
         73
       ]
+    },
+    {
+      "name": "SoulAccessUnlocked",
+      "discriminator": [
+        19,
+        83,
+        34,
+        242,
+        224,
+        20,
+        64,
+        181
+      ]
     }
   ],
   "errors": [
@@ -15691,6 +15821,11 @@ export type AofCore = {
       "code": 6150,
       "name": "InvalidSellerFeeBasisPoints",
       "msg": "Seller fee basis points must be at most 10000 and identical across batches"
+    },
+    {
+      "code": 6151,
+      "name": "SoulAccessLocked",
+      "msg": "Soul Core access requires at least one completed laboratory seal"
     }
   ],
   "types": [
@@ -19557,6 +19692,30 @@ export type AofCore = {
           },
           {
             "name": "seals",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SoulAccess",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "unlockedAt",
+            "type": "i64"
+          },
+          {
+            "name": "sealsAtUnlock",
             "type": "u32"
           },
           {

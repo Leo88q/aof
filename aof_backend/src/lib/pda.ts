@@ -32,6 +32,7 @@ const programDataFor = (programId: PublicKey) =>
 
 export const configPda = () => find([enc("config")]);
 export const laboratoryFinalePda = (user: PublicKey) => find([enc("laboratory_finale"), user.toBuffer()]);
+export const soulAccessPda = (user: PublicKey) => find([enc("soul_access"), user.toBuffer()]);
 export const authPda = () => find([enc("auth")]);
 /** Shared escrow ATA for refunded resource costs; AUTH_SEED is its token owner. */
 export const resourceEscrowAta = (mint: PublicKey) =>

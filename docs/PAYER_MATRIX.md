@@ -3,7 +3,7 @@
 Создаёт `node scripts/payer-audit.mjs --write`; гейт — `--check`. Политика (кто ДОЛЖЕН платить) — `security/payer-policy.json`.
 Принцип: **игрок платит комиссию сети и rent своих аккаунтов; проект — только deployment и глобальную инфраструктуру.**
 
-Инициализаций аккаунтов: **91**; нарушают принцип (долг до деплоя): **0**.
+Инициализаций аккаунтов: **92**; нарушают принцип (долг до деплоя): **0**.
 
 ## Все инициализации
 
@@ -78,6 +78,7 @@
 | aof_core | StartModelTraining | model_state | ModelState | init_if_needed | user | player | player | ok | — | — |
 | aof_core | StartSignalProcessing | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | StartSignalProcessing | signal_state | SignalState | init_if_needed | user | player | player | ok | — | — |
+| aof_core | UnlockSoulAccess | soul_access | SoulAccess | init_if_needed | user | player | player | ok | — | — |
 | aof_core | UseFlask | energy_account | EnergyAccount | init_if_needed | user | player | player | ok | — | — |
 | aof_core | VrfPoolAdd | vrf_slot | VrfSlot | init | operator (оператор) | global | operator | ok | — | — |
 | aof_core | WeatherCrank | weather_state | WeatherState | init_if_needed | cranker (оператор) | global | operator | ok | — | — |

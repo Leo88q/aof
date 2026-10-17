@@ -18,13 +18,21 @@ export interface OrganismInput {
   tools: unknown[] | null;
   /** Energy snapshot, or null if unavailable. */
   energy: { amount?: unknown; cap?: unknown } | null;
+  /** Completed laboratory seals from /query/laboratory-finale, or null if unavailable. */
+  seals?: unknown;
+  /** SoulAccess.unlocked from /query/soul-access (boolean), or null if unavailable. */
+  access?: unknown;
 }
+
+export type SoulAccessState = 'open' | 'eligible' | 'locked' | 'unknown';
 
 export interface CellView {
   index: number;
   state: CellState;
   /** 0..1 for growing cells, 1 for ready, 0 otherwise. */
   progress: number;
+  /** Seconds until readyAt on chain time for a growing cell, else null. */
+  etaSec: number | null;
 }
 
 export interface DockView {
@@ -36,6 +44,32 @@ export interface DockView {
   working: number;
   /** Highest rarity among owned tools of this kind. */
   bestRarity: Rarity | null;
+  /** Lowest readable durability among owned tools of this kind (0..20), null when unknown. */
+  minDurability: number | null;
+  /** Seconds until the earliest working tool of this kind finishes, null when none is timed. */
+  miningEtaSec: number | null;
+}
+
+/** ToolData.durability range on-chain (0..20). */
+export const DURABILITY_MAX = 20;
+
+/** One full seal set, burned 1 each by the laboratory seal (see the design doc). */
+export const SOUL_ASSEMBLY: readonly string[] = [
+  'model',
+  'cryoFluid',
+  'voltFluid',
+  'bioFluid',
+  'nanoFluid',
+  'quantumFluid',
+  'amberQuartz',
+];
+
+export interface SoulAssemblyItem {
+  id: string;
+  /** null when the balance is unknown. */
+  amount: number | null;
+  /** True only when the balance is known to cover the burned amount of 1. */
+  ready: boolean;
 }
 
 export interface ResourceView {
@@ -57,7 +91,18 @@ export interface OrganismState {
   docks: DockView[];
   organs: OrganView[];
   /** The terminal resource (future access, not a reward in phase 1). */
-  soulCore: { known: boolean; amount: number | null };
+  soulCore: {
+    known: boolean;
+    amount: number | null;
+    /** Progress toward one full seal set, derived from the same balances. */
+    assembly: SoulAssemblyItem[];
+    assemblyReady: number;
+    assemblyTotal: number;
+    /** Completed seals when the finale account was readable, else null. */
+    seals: number | null;
+    /** On-chain SoulCore gate: open, eligible (sealed, not yet unlocked), locked, or unknown. */
+    access: SoulAccessState;
+  };
 }
 
 export const CELL_COUNT = 10;
@@ -107,12 +152,12 @@ function isMiningNow(tool: Record<string, unknown>, nowSec: number): boolean {
  * reaches 1 locally: a cell only becomes "ready" when a fresh snapshot says so.
  */
 function cellFromTile(index: number, raw: unknown, nowSec: number): CellView {
-  if (!raw || typeof raw !== 'object') return { index, state: 'unknown', progress: 0 };
+  if (!raw || typeof raw !== 'object') return { index, state: 'unknown', progress: 0, etaSec: null };
   const tile = raw as Record<string, unknown>;
   const active = tile.active === true || toNumber(tile.state) === 1 || toNumber(tile.state) === 2;
   const ready = tile.ready === true;
-  if (ready) return { index, state: 'ready', progress: 1 };
-  if (!active) return { index, state: 'empty', progress: 0 };
+  if (ready) return { index, state: 'ready', progress: 1, etaSec: 0 };
+  if (!active) return { index, state: 'empty', progress: 0, etaSec: null };
   const startedAt = toNumber(tile.startedAt);
   const readyAt = toNumber(tile.readyAt);
   let progress: number;
@@ -122,7 +167,8 @@ function cellFromTile(index: number, raw: unknown, nowSec: number): CellView {
     const apiProgress = toNumber(tile.progress);
     progress = apiProgress === null ? 0 : apiProgress / 100;
   }
-  return { index, state: 'growing', progress: Math.min(0.99, Math.max(0, progress)) };
+  const etaSec = readyAt !== null && readyAt > 0 ? Math.max(0, Math.floor(readyAt - nowSec)) : null;
+  return { index, state: 'growing', progress: Math.min(0.99, Math.max(0, progress)), etaSec };
 }
 
 export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismState {
@@ -141,7 +187,7 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   const cells: CellView[] = [];
   for (let i = 0; i < CELL_COUNT; i += 1) {
     if (!rawTiles) {
-      cells.push({ index: i, state: 'unknown', progress: 0 });
+      cells.push({ index: i, state: 'unknown', progress: 0, etaSec: null });
       continue;
     }
     const raw = rawTiles.find((t) => t && typeof t === 'object' && (t as { index?: unknown }).index === i);
@@ -151,20 +197,34 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   // Limbs: tools grouped by kind.
   const tools = input.tools;
   const docks: DockView[] = TOOL_DOCKS.map((dock) => {
-    if (!tools) return { toolType: dock.toolType, resource: dock.resource, owned: null, working: 0, bestRarity: null };
+    if (!tools) return { toolType: dock.toolType, resource: dock.resource, owned: null, working: 0, bestRarity: null, minDurability: null, miningEtaSec: null };
     let owned = 0;
     let working = 0;
     let best: Rarity | null = null;
+    let minDurability: number | null = null;
+    let miningEtaSec: number | null = null;
     for (const raw of tools) {
       if (!raw || typeof raw !== 'object') continue;
       const tool = raw as Record<string, unknown>;
       if (normalizeToolType(tool.toolType ?? tool.tool_type) !== dock.toolType) continue;
       owned += 1;
-      if (isMiningNow(tool, nowSec)) working += 1;
+      if (isMiningNow(tool, nowSec)) {
+        working += 1;
+        const end = toNumber(tool.miningEnd ?? tool.mining_end);
+        if (end !== null) {
+          const eta = Math.max(0, Math.floor(end - nowSec));
+          miningEtaSec = miningEtaSec === null ? eta : Math.min(miningEtaSec, eta);
+        }
+      }
       const rarity = normalizeRarity(tool.rarity);
       if (rarity && (best === null || RARITY_ORDER.indexOf(rarity) > RARITY_ORDER.indexOf(best))) best = rarity;
+      // Durability is a u8 on-chain; only the canonical 0..20 range is shown.
+      const durability = toNumber(tool.durability);
+      if (durability !== null && durability >= 0 && durability <= DURABILITY_MAX) {
+        minDurability = minDurability === null ? durability : Math.min(minDurability, durability);
+      }
     }
-    return { toolType: dock.toolType, resource: dock.resource, owned, working, bestRarity: best };
+    return { toolType: dock.toolType, resource: dock.resource, owned, working, bestRarity: best, minDurability, miningEtaSec };
   });
 
   // Organs: intensity is log-scaled against the largest known balance.
@@ -191,11 +251,30 @@ export function deriveOrganism(input: OrganismInput, nowSec: number): OrganismSt
   }));
 
   const soulAmount = amountOf('soulCore');
+  const assembly: SoulAssemblyItem[] = SOUL_ASSEMBLY.map((id) => {
+    const amt = amountOf(id);
+    return { id, amount: amt, ready: amt !== null && amt >= 1 };
+  });
+  const sealsRaw = toNumber(input.seals);
+  const seals = sealsRaw !== null && sealsRaw >= 0 ? Math.floor(sealsRaw) : null;
+  const access: SoulAccessState = input.access === true
+    ? 'open'
+    : seals !== null
+      ? (seals >= 1 ? 'eligible' : 'locked')
+      : 'unknown';
   return {
     heart,
     cells,
     docks,
     organs,
-    soulCore: { known: soulAmount !== null, amount: soulAmount },
+    soulCore: {
+      known: soulAmount !== null,
+      amount: soulAmount,
+      assembly,
+      assemblyReady: assembly.filter((a) => a.ready).length,
+      assemblyTotal: assembly.length,
+      seals,
+      access,
+    },
   };
 }

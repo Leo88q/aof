@@ -10,9 +10,9 @@ import { fmtNum } from '../lib/marketUtils';
 import { useLocale } from '../i18n/LocaleProvider';
 import { organismCopy } from '../i18n/organismCopy';
 import { homeResourceNames, type ResourceId } from '../i18n/homeDetail';
-import { deriveOrganism, toNumber, type OrganismInput } from './model';
+import { deriveOrganism, toNumber, DURABILITY_MAX, type OrganismInput } from './model';
 import { ORGANS, ORGAN_IDS, type OrganId } from './registry';
-import { createOrganismScene, type OrganismScene } from './scene';
+import { createOrganismScene, type OrganismPick, type OrganismScene } from './scene';
 
 const POLL_MS = 10_000;
 const CLOCK_MS = 1_000;
@@ -28,6 +28,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY_SNAPSHOT);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [webgl, setWebgl] = useState(true);
+  const [pick, setPick] = useState<OrganismPick | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<OrganismScene | null>(null);
 
@@ -39,14 +40,22 @@ export default function OrganismView({ owner }: { owner: string | null }) {
     }
     let alive = true;
     const load = async () => {
-      const [b, t, m, e] = await Promise.allSettled([
+      const [b, t, m, e, f, a] = await Promise.allSettled([
         api.query.balances(owner),
         api.query.labTiles(owner),
         api.query.myTools(owner),
         api.energy.balance(owner),
+        api.query.laboratoryFinale(owner),
+        api.query.soulAccess(owner),
       ]);
       if (!alive) return;
       const balances = b.status === 'fulfilled' ? readEconomyBalances(b.value) : null;
+      const seals = f.status === 'fulfilled' && f.value && typeof f.value === 'object'
+        ? (f.value as { seals?: unknown }).seals
+        : null;
+      const access = a.status === 'fulfilled' && a.value && typeof a.value === 'object'
+        ? ((a.value as { unlocked?: unknown }).unlocked === true)
+        : null;
       const tiles = t.status === 'fulfilled' && Array.isArray((t.value as { tiles?: unknown })?.tiles)
         ? ((t.value as { tiles: unknown[] }).tiles)
         : null;
@@ -57,7 +66,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
       // Convert the browser clock into chain time using the server's serverNow.
       const serverNow = t.status === 'fulfilled' ? toNumber((t.value as { serverNow?: unknown })?.serverNow) : null;
       const clockOffsetSec = serverNow !== null ? serverNow - Date.now() / 1000 : 0;
-      setSnapshot({ balances, tiles, tools, energy, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
+      setSnapshot({ balances, tiles, tools, energy, seals, access, loaded: true, failed: !balances && !tiles && !tools && !energy, clockOffsetSec });
     };
     load();
     const id = window.setInterval(load, POLL_MS);
@@ -82,7 +91,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
     const container = containerRef.current;
     if (!container) return;
     try {
-      sceneRef.current = createOrganismScene(container);
+      sceneRef.current = createOrganismScene(container, setPick);
     } catch {
       setWebgl(false);
       sceneRef.current = null;
@@ -121,6 +130,19 @@ export default function OrganismView({ owner }: { owner: string | null }) {
       ) : (
         <p role="status">{copy.webglMissing}</p>
       )}
+      {pick && (
+        <p className="organism-detail" role="status">
+          {pick.kind === 'cell' && (() => {
+            const c = state.cells[pick.index];
+            return `${copy.body} #${pick.index + 1}: ${copy.cell[c.state]}${c.state === 'growing' ? ` ${Math.round(c.progress * 100)}%` : ''}${c.etaSec !== null && c.state === 'growing' ? ` · ${copy.eta} ${c.etaSec}s` : ''}`;
+          })()}
+          {pick.kind === 'dock' && (() => {
+            const d = state.docks[pick.index];
+            return `${d.toolType}: ${d.owned === null ? copy.dock.unknownTools : `${copy.dock.owned} ${d.owned}, ${copy.dock.working} ${d.working}`}${d.bestRarity ? ` (${d.bestRarity})` : ''}${d.minDurability !== null ? ` · ${copy.dock.durability} ${d.minDurability}/${DURABILITY_MAX}` : ''}${d.miningEtaSec !== null ? ` · ${copy.eta} ${d.miningEtaSec}s` : ''}`;
+          })()}
+          {pick.kind === 'soul' && `${copy.soulCore}: ${amountText(state.soulCore.amount)} · ${copy.assembly} ${state.soulCore.assemblyReady}/${state.soulCore.assemblyTotal}${state.soulCore.seals !== null ? ` · ${copy.seals}: ${state.soulCore.seals}` : ''}`}
+        </p>
+      )}
       <div className="organism-lists">
         <h3>{copy.heart}</h3>
         <p>
@@ -141,6 +163,7 @@ export default function OrganismView({ owner }: { owner: string | null }) {
               {d.toolType}: {d.owned === null ? copy.dock.unknownTools : `${copy.dock.owned} ${d.owned}`}
               {d.owned !== null && d.owned > 0 ? `, ${copy.dock.working} ${d.working}` : ''}
               {d.bestRarity ? ` (${d.bestRarity})` : ''}
+              {d.minDurability !== null ? `, ${copy.dock.durability} ${d.minDurability}/${DURABILITY_MAX}` : ''}
             </li>
           ))}
         </ul>
@@ -166,6 +189,16 @@ export default function OrganismView({ owner }: { owner: string | null }) {
         <p>
           {amountText(state.soulCore.amount)} · {copy.soulCoreNote}
         </p>
+        <p>
+          {copy.assembly}: {state.soulCore.assemblyReady} / {state.soulCore.assemblyTotal}
+          {state.soulCore.seals !== null ? ` · ${copy.seals}: ${state.soulCore.seals}` : ''}
+        </p>
+        <p>{copy.access[state.soulCore.access]}</p>
+        <ul>
+          {state.soulCore.assembly.map((a) => (
+            <li key={a.id}>{resourceName(a.id)}: {amountText(a.amount)} / 1</li>
+          ))}
+        </ul>
       </div>
     </section>
   );
